@@ -1,17 +1,21 @@
-[project]
-name = "torchtmpl"
-version = "0.0.1"
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
 
-dependencies = [
-    "PyYAML>=6.0",
-    "torch>=1.13.1",
-    "torchvision>=0.14.1",
-    "torchinfo>=1.7.2",
-    "wandb>=0.13.11",
-    "scipy>=1.10.1",
-    "tqdm>=4.65.0",
-    "matplotlib>=3.7.1"
+[project]
+name = "Holotrack"
+version = "0.1.0"
+description = "Deep learning-based 3D localization and tracking of bacteria using digital holography."
+requires-python = ">=3.10"
+authors = [
+{name = "Erwan Gouriou", email = "[erwan.gouriou@student-cs.fr](mailto:erwan.gouriou@student-cs.fr)"},
+{name = "Louis Bonnecaze", email = "[louis.bonnecaze@student-cs.fr](mailto:louis.bonnecaze@student-cs.fr)"}
 ]
 
-[options]
-package_dir = "torchtmpl"
+dependencies = [
+    "torch>=2.9.1",
+    "torchvision>=0.24.1",
+    "torchinfo>=1.8.0",
+    "PyYAML>=6.0.3"
+]
+
