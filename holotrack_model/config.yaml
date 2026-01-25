@@ -1,0 +1,33 @@
+data:
+  root_dir: "../holograms/E_coli.tif"
+
+optim:
+  algo: Adam
+  params:
+    lr: 0.0001 # learning rate: 0.00001~0.0001
+
+nepochs: 10000
+model:
+  class: "HoloSolver"
+  with_bc: True
+  
+  physical_params:
+    step_z: 0.5 
+    z_max: 30 # Set longer than z0
+    waveLength: 0.3991 #0.532/1.333
+    physicalLength: 0.25
+    phase_shift: 0.335 # Initial assumption of phase shift per voxel = 2𝝿(n_obj−n_med)dz/λ
+
+  nerf_params:
+    gaussian_proj: 64
+    gaussian_scale: 5
+
+test:
+  save_dir: "../Results"
+  weights_path: "./torchholo/logs/HoloSolver_0/best_model.pt"
+
+logging:
+  # wandb: 
+  #   project: sample_project
+  #   entity: sample_entity
+  logdir: "./logs"  # Better to provide the fullpath, especially on the cluster

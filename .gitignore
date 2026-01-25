@@ -22,15 +22,16 @@ MANIFEST
 
 # Environments
 venv/
+uv.lock
 
 # logs and wandb
-logs/*
+**/logs/
 wandb/*
 
 # pytorch best model and experiments
 best_model.pt
 # the config.yaml you use for your experiments
-config.yaml
+#config.yaml
 
 # Vim
 **/*.swp
@@ -38,3 +39,6 @@ config.yaml
 
 # Slurm
 logslurms
+
+#debug
+**/debug_test_output/

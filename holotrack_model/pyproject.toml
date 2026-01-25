@@ -1,0 +1,16 @@
+[project]
+name = "torchtmpl"
+version = "0.0.1"
+
+dependencies = [
+    "torch>=2.9.1",
+    "torchvision>=0.24.1",
+    "torchinfo>=1.8.0",
+    "PyYAML>=6.0.3",
+    "wandb>=0.24.0",
+    "tqdm>=4.67.1",
+    "tensorboard>=2.20.0"
+]
+
+[options]
+package_dir = "torchtmpl"
