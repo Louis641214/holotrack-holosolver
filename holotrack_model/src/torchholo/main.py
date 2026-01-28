@@ -113,7 +113,7 @@ def train(config):
     torch.save(model.state_dict(), str(logdir / "best_model.pt"))
     logging.info("-" * 30)
     logging.info("END TRAINING")
-    logging.info(f"MODEL SAVED TO      : {str(logdir / "best_model.pt")}")
+    logging.info(f"MODEL SAVED TO      : {str(logdir / 'best_model.pt')}")
     logging.info(f"Total   Loss        : {total_loss}")
     logging.info(f"Physics Loss        : {loss_physics}")
     logging.info(f"BC      Loss        : {loss_bc}")

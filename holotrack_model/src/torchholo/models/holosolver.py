@@ -40,10 +40,11 @@ class HoloSolver(nn.Module) :
     def _init_physics_buffer(self) : 
         x_range = torch.arange(1, self.width+1, dtype=torch.float32)/self.width
         y_range = torch.arange(1, self.height+1, dtype=torch.float32)/self.height
-        xx, yy = torch.meshgrid(x_range, y_range, indexing='ij')
+        xx, yy = torch.meshgrid(x_range, y_range, indexing='xy')
         self.register_buffer('xx', xx)
         self.register_buffer('yy', yy)
-
+        
+        #Attention diff
         z_values = torch.arange(self.z_min, self.z_max + (self.dz/100), step=self.dz, dtype=torch.float32).flip(-1)
         self.register_buffer('z_values', z_values)
 
@@ -64,14 +65,14 @@ class HoloSolver(nn.Module) :
         y_BC = torch.arange(1, self.height + 1, dtype=torch.float32)/self.height
         z_BC = torch.arange(0, self.z_max + (self.dz/100), step=self.dz, dtype=torch.float32)/self.z_max
 
-        xx_BC, zz_BC = torch.meshgrid(x_BC, z_BC, indexing='ij')
+        xx_BC, zz_BC = torch.meshgrid(x_BC, z_BC, indexing='xy')
         yy_0 = torch.full_like(xx_BC, 0.0 + (offset / self.height))
         yy_1 = torch.full_like(xx_BC, 1.0 - (offset / self.height))
 
         self.register_buffer('tensor_array_BC_0', torch.stack([xx_BC, yy_0, zz_BC], dim=-1).reshape(-1, 3))
         self.register_buffer('tensor_array_BC_1', torch.stack([xx_BC, yy_1, zz_BC], dim=-1).reshape(-1, 3))
 
-        yy_BC, zz_BC = torch.meshgrid(y_BC, z_BC, indexing='ij')
+        yy_BC, zz_BC = torch.meshgrid(y_BC, z_BC, indexing='xy')
         xx_0 = torch.full_like(yy_BC, 0.0 + (offset / self.width))
         xx_1 = torch.full_like(yy_BC, 1.0 - (offset / self.width))
 
