@@ -13,7 +13,7 @@ def angular_spectrum_propagator(image, depth, device, segment_size, physicalLeng
     u = torch.fft.fftfreq(M2, d=1.0, device=device) * M2
     v = torch.fft.fftfreq(N2, d=1.0, device=device) * N2
 
-    V, U = torch.meshgrid(v, u, indexing='ij')
+    V, U = torch.meshgrid(v, u, indexing='xy')
     U = (waveLength * U / (M2 * physicalLength)).to(torch.float32)
     V = (waveLength * V / (N2 * physicalLength)).to(torch.float32)
     U2 = (U**2).to(torch.complex64)

@@ -24,7 +24,7 @@ model:
 
 test:
   save_dir: "../Results"
-  weights_path: "./torchholo/logs/HoloSolver_0/best_model.pt"
+  weights_path: "./logs/HoloSolver_0/best_model.pt"
 
 logging:
   # wandb: 
