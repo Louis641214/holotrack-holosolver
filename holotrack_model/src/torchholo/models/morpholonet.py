@@ -1,11 +1,16 @@
 import torch.nn as nn
 import math
 from .positional_encoding import PositionalEncoding
+from .positional_encoding_barf import PositionalEncodingBarf
+
 class MorpHoloNet(nn.Module):
     def __init__(self, params):
         super(MorpHoloNet, self).__init__()
 
-        self.p = PositionalEncoding(gaussian_projection=params["gaussian_proj"], gaussian_scale=params["gaussian_scale"]) # Gaussian_scale: 5~12
+        if params["barf"] is True : 
+            self.p = PositionalEncodingBarf(gaussian_projection=params["gaussian_proj"], gaussian_scale=params["gaussian_scale"])
+        else :
+            self.p = PositionalEncoding(gaussian_projection=params["gaussian_proj"], gaussian_scale=params["gaussian_scale"]) # Gaussian_scale: 5~12
         
         self.layers = nn.ModuleList([nn.Linear(in_features=params["gaussian_proj"]*4, out_features=128, bias=True), 
                                     nn.Linear(in_features=128, out_features=128, bias=True),

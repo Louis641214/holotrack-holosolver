@@ -43,7 +43,22 @@ def test_dataloaders() :
     }
     hologram = get_hologram(config)
     print(f"Hologram shape (H, W) : {hologram.shape[0]}, {hologram.shape[1]}")
+
+class TargetBlurring() : 
+    def __init__(self, cfg):
+        self.blur_epochs = cfg["blur_epochs"]
+        self.max_sigma = cfg["max_sigma"]
+        self.min_sigma = cfg["min_sigma"]
+        self.kernel_size = cfg["kernel_size"]
     
+    def update(self, image, e) : 
+        current_sigma = self.max_sigma - (self.max_sigma - self.min_sigma) * (e / self.blur_epochs)
+        image_target = v2.functional.gaussian_blur(inpt=image.unsqueeze(0), 
+                                                    kernel_size=[self.kernel_size, self.kernel_size],
+                                                    sigma=current_sigma).squeeze(0)
+        return image_target, current_sigma
+
 if __name__=="__main__" : 
     logging.basicConfig(stream=sys.stdout, level=logging.INFO, format="%(message)s")
     test_dataloaders()
+

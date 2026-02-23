@@ -1,0 +1,57 @@
+data:
+  root_dir: ../holograms/Isotonic_RBC.tif
+  blurring:
+    activ: False
+    blur_epochs: 2000
+    max_sigma: 1.0
+    min_sigma: 0.1
+    kernel_size: 9
+
+optim:
+  algo: Adam
+  params:
+    lr: 0.0005 # 0.0005
+    eps: 0.0000001
+
+  scheduler:
+    activ: False
+    lr_physics: 0.005 #0.005
+    milestones: [3000, 6000] #pas mal ca a enlevé le bruit derrière
+    gamma: 0.1
+    warm_start: False
+
+nepochs: 20000
+
+model:
+  class: "HoloSolver"
+
+  regularization:
+    with_bc: True
+    with_sparsity: False
+    sparsity_weight: 0.01
+    with_tv: False
+    tv_weight: 0.0005
+  
+  physical_params:
+    phase_shift: 0.661
+    physicalLength: 0.5
+    step_z: 1
+    waveLength: 0.3991
+    z_max: 140
+
+  nerf_params:
+    model: "MorpHoloNet"
+    gaussian_proj: 64
+    gaussian_scale: 7
+    barf: False
+    barf_epochs: 1000
+
+test:
+  save_dir: "../Results"
+  weights_path: "./logs/HoloSolver_38/best_model.pt"
+
+logging:
+  # wandb: 
+  #   project: sample_project
+  #   entity: sample_entity
+  logdir: "./logs"  # Better to provide the fullpath, especially on the cluster
