@@ -51,6 +51,7 @@ class PositionalEncoding(nn.Module):
         
         self.init_weights()
         
+        
     def init_weights(self) : 
 
         for param in self.parameters() : 

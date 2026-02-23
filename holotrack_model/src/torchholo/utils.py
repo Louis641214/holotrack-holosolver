@@ -60,20 +60,23 @@ class ModelCheckpoint(object):
         return False
 
 
-def train(model, U_z0, optimizer, with_bc = True):
+def train(model, U_z0, optimizer):
 
     model.train()
 
     optimizer.zero_grad()
 
-    loss_physics, loss_bc, total_loss = model(U_z0, with_bc)
+    loss_physics, loss_bc, weighted_loss_sparsity, weighted_loss_tv, total_loss = model(U_z0)
     
     total_loss.backward()
     optimizer.step()
 
-    return loss_physics.item(), loss_bc.item(), total_loss.item()
+    return loss_physics.item(), loss_bc.item(), weighted_loss_sparsity.item(), weighted_loss_tv.item(), total_loss.item()
 
 def test(model, cfg):
     model.eval()
     save_dir = cfg["save_dir"]
-    model.generate_output(save_dir)
+    if model.hash is True:
+        model.generate_output_hash(save_dir)
+    else : 
+        model.generate_output(save_dir)
