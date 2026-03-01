@@ -14,5 +14,11 @@ dependencies = [
     "setuptools==82.0.0",
     "torch==2.10.0",
     "torchvision==0.25.0",
+    "torchinfo>=1.8.0",
+    "wandb>=0.24.0",
     "tqdm==4.67.3",
+    "tensorboard>=2.20.0",
 ]
+
+[options]
+package_dir = "torchtmpl"
