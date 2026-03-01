@@ -1,0 +1,18 @@
+[project]
+name = "2025-2026-holotrack"
+version = "0.1.0"
+description = "PFE holotrack"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "matplotlib==3.10.8",
+    "napari==0.6.6",
+    "numpy==2.4.2",
+    "pillow==12.1.1",
+    "pyyaml==6.0.3",
+    "scipy==1.17.1",
+    "setuptools==82.0.0",
+    "torch==2.10.0",
+    "torchvision==0.25.0",
+    "tqdm==4.67.3",
+]
