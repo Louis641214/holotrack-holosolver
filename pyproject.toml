@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "PFE holotrack"
 readme = "README.md"
 requires-python = ">=3.12"
+
 dependencies = [
     "matplotlib==3.10.8",
     "napari==0.6.6",
@@ -20,5 +21,5 @@ dependencies = [
     "tensorboard>=2.20.0",
 ]
 
-[options]
-package_dir = "torchtmpl"
+[tool.setuptools]
+packages = ["holotrack_model", "visualizer"]
