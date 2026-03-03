@@ -1,0 +1,11 @@
+{
+  "output_dir": "./2026_03_04_09_08_26",
+  "number_of_holograms": 1,
+  "files": [
+    "Hologramme BMP : ./2026_03_04_09_08_26/simulated_hologram/holo_0.bmp",
+    "Hologramme TIFF : ./2026_03_04_09_08_26/simulated_hologram/holo_0.tiff",
+    "Hologramme NPY : ./2026_03_04_09_08_26/simulated_hologram/holo_0.npy",
+    "Positions CSV : ./2026_03_04_09_08_26/object_positions/bact_0.csv",
+    "Positions TXT : ./2026_03_04_09_08_26/object_positions/bact_0.txt"
+  ]
+}

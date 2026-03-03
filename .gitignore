@@ -43,3 +43,12 @@ logslurms
 
 #debug
 **/debug_test_output/
+
+# Simulator
+Simulator/simu_bact_random/
+Simulator/simu_bact_liste/
+Simulator/simu_spheres/
+Simulator/biblio/
+Simulator/wandb/
+Simulator/**/*.npy
+Simulator/wandb_api.txt

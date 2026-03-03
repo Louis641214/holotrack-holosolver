@@ -6,14 +6,19 @@ readme = "README.md"
 requires-python = ">=3.12"
 
 dependencies = [
+    "connected-components-3d>=3.10.0",
+    "cupy-cuda12x>=13.0.0",
     "matplotlib==3.10.8",
     "napari==0.6.6",
     "numpy==2.4.2",
+    "pandas>=2.2.0",
     "pillow==12.1.1",
     "pyyaml==6.0.3",
     "scipy==1.17.1",
     "setuptools==82.0.0",
+    "tifffile>=2023.9.26",
     "torch==2.10.0",
+    "torchmetrics>=1.7.0",
     "torchvision==0.25.0",
     "torchinfo>=1.8.0",
     "wandb>=0.24.0",
@@ -22,4 +27,4 @@ dependencies = [
 ]
 
 [tool.setuptools]
-packages = ["holotrack_model", "visualizer"]
+packages = ["holotrack_model", "visualizer", "Simulator"]
