@@ -5,7 +5,7 @@ import os
 
 def update_config(result_json_path):
 
-    config_yaml_path = "holotrack_model/config.yaml"
+    config_yaml_path = "holotrack_model/config/config.yaml"
     
     if not os.path.exists(result_json_path):
         print(f"Erreur : Le fichier de résultat '{result_json_path}' n'existe pas.")

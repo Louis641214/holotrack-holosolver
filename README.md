@@ -40,5 +40,5 @@ python3 Simulator/visualizer/visualizer.py
 Pour aligner les paramètres du modèle avec ceux de la simulation, exécuter la commande suivante
 
 ```bash
-python3 holotrack_model/config.py Simulator/results/2026_03_04_12_58_27/parameters_simu_bact.json 
+python3 holotrack_model/config/config.py Simulator/results/2026_03_04_12_58_27/parameters_simu_bact.json 
 ```
