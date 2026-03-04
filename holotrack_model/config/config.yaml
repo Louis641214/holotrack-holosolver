@@ -1,5 +1,5 @@
 data:
-  root_dir: ./Simulator/results/2026_03_04_15_12_43/simulated_hologram/holo0.tiff
+  root_dir: ./Simulator/results/2026_03_04_15_17_44/simulated_hologram/holo0.tiff
 optim:
   algo: Adam
   params:
@@ -24,7 +24,7 @@ model:
     gaussian_proj: 64
     gaussian_scale: 7
 test:
-  save_dir: ./holotrack_model/Results/2026_03_04_15_12_43
+  save_dir: ./holotrack_model/Results/2026_03_04_15_17_44
   weights_path: ./logs/HoloSolver_39/best_model.pt
 logging:
-  logdir: ./holotrack_model/Logs/2026_03_04_15_12_43
+  logdir: ./holotrack_model/Logs/2026_03_04_15_17_44
