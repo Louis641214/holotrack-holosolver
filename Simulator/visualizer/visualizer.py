@@ -9,7 +9,7 @@ Permet de:
 - lire rapidement les fichiers texte (CSV/TXT/JSON)
 
 Usage:
-    python3 visualizer_2026.py
+    python3 visualizer.py
 """
 
 from __future__ import annotations
@@ -43,7 +43,7 @@ class GeneratedFilesVisualizer:
         self.root = root
         self.base_dir = base_dir
 
-        self.root.title("Visualizer 2026 - Fichiers générés")
+        self.root.title("Visualizer - Fichiers générés")
         self.root.geometry("1450x850")
 
         self.runs: list[RunInfo] = []
@@ -78,7 +78,7 @@ class GeneratedFilesVisualizer:
         left = ttk.Frame(body, padding=6)
         body.add(left, weight=2)
 
-        ttk.Label(left, text="Dossiers 2026 détectés", font=("Arial", 11, "bold")).pack(anchor="w")
+        ttk.Label(left, text="Dossiers détectés", font=("Arial", 11, "bold")).pack(anchor="w")
 
         columns = ("run", "location", "files")
         self.runs_tree = ttk.Treeview(left, columns=columns, show="headings", height=25)
@@ -364,9 +364,15 @@ class GeneratedFilesVisualizer:
 
 
 def main() -> None:
-    script_dir = Path(__file__).resolve().parent
+    script_dir = Path(__file__).resolve().parent.parent  # Simulator/
+    results_dir = script_dir / "results"  # Simulator/results/
+    
+    # Vérifier que le dossier results existe
+    if not results_dir.exists():
+        results_dir.mkdir(parents=True, exist_ok=True)
+    
     root = tk.Tk()
-    GeneratedFilesVisualizer(root, script_dir)
+    GeneratedFilesVisualizer(root, results_dir)
     root.mainloop()
 
 

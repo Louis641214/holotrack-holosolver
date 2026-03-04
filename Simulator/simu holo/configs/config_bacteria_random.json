@@ -1,14 +1,14 @@
 {
     "mode": "bacteria_random",
-    "nb_holo": 100,
-    "output_dir": null,
+    "nb_holo": 1,
+    "output_dir": "Simulator/results",
     
-    "nb_objects": 50,
+    "nb_objects": 20,
     
     "holo_size_xy": 1024,
     "border": 256,
     "upscale_factor": 2,
-    "z_size": 200,
+    "z_size": 100,
     
     "length_min": 3.0e-6,
     "length_max": 4.0e-6,

@@ -1,5 +1,5 @@
 {
-    "output_base_path": "./",
+    "output_base_path": "../../Simulator/results",
     "number_of_holograms": 1,
     "number_of_bacteria": 1,
     "holo_size_xy": 512,

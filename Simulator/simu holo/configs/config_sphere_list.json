@@ -1,7 +1,7 @@
 {
     "mode": "sphere_list",
     "nb_holo": 1,
-    "output_dir": null,
+    "output_dir": "Simulator/results",
     
     "holo_size_xy": 2048,
     "border": 512,
