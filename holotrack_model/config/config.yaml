@@ -1,5 +1,5 @@
 data:
-  root_dir: ./Simulator/results/2026_03_04_13_51_53/simulated_hologram/holo0.tiff
+  root_dir: ./Simulator/results/2026_03_04_15_12_43/simulated_hologram/holo0.tiff
 optim:
   algo: Adam
   params:
@@ -14,7 +14,7 @@ model:
     with_tv: true
     tv_weight: 0.01
   physical_params:
-    phase_shift: 0.002
+    phase_shift: 0.005
     physicalLength: 0.25
     step_z: 0.5
     waveLength: 0.66
@@ -24,7 +24,7 @@ model:
     gaussian_proj: 64
     gaussian_scale: 7
 test:
-  save_dir: ./holotrack_model/Results/2026_03_04_13_51_53
+  save_dir: ./holotrack_model/Results/2026_03_04_15_12_43
   weights_path: ./logs/HoloSolver_39/best_model.pt
 logging:
-  logdir: ./holotrack_model/Logs/2026_03_04_13_51_53
+  logdir: ./holotrack_model/Logs/2026_03_04_15_12_43
