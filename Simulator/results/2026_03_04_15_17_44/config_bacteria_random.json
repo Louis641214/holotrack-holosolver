@@ -1,0 +1,42 @@
+{
+    "mode": "bacteria_random",
+    "nb_holo": 10,
+    "output_dir": "Simulator/results",
+    
+    "nb_objects": 10,
+    
+    "holo_size_xy": 1024,
+    "border": 256,
+    "upscale_factor": 2,
+    "z_size": 100,
+    "step_z": 5e-07,
+    
+    "length_min": 3.0e-6,
+    "length_max": 4.0e-6,
+    "thickness_min": 1.0e-6,
+    "thickness_max": 2.0e-6,
+    
+    "pix_size": 5.5e-6,
+    "magnification": 40.0,
+    "index_milieu": 1.33,
+    "index_bacterie": 1.335,
+    "wavelength": 660e-9,
+    
+    "illumination_mean": 1.0,
+    "noise_std_min": 0.01,
+    "noise_std_max": 0.1,
+    
+    "distance_volume_camera": 0.01,
+    "number_of_propagation": 200,
+    
+    "save_options": {
+        "hologram_bmp": true,
+        "hologram_tiff": true,
+        "hologram_npy": false,
+        "propagated_tiff": true,
+        "propagated_npy": false,
+        "segmentation_tiff": true,
+        "segmentation_npy": false,
+        "positions_csv": true
+    }
+}
