@@ -29,6 +29,7 @@ from PIL import Image
 import PIL
 import argparse
 import json
+import shutil
 
 
 def load_config(config_path):
@@ -93,8 +94,8 @@ def validate_config(config):
     return config
 
 
-def setup_directories(base_path):
-    """Create output directories and return paths"""
+def setup_directories(base_path, config_file=None):
+    """Create output directories, copy config file, and return paths"""
     now = datetime.datetime.now()
     formatted_date_time = now.strftime("%Y_%m_%d_%H_%M_%S")
     print(f"Date et heure actuelles: {formatted_date_time}")
@@ -109,6 +110,15 @@ def setup_directories(base_path):
     os.makedirs(simulated_hologram_dir, exist_ok=True)
     os.makedirs(binary_volume_dir, exist_ok=True)
     os.makedirs(hologram_volume_dir, exist_ok=True)
+    
+    # Copy configuration file to output directory
+    if config_file and os.path.exists(config_file):
+        try:
+            config_dest = os.path.join(output_dir, os.path.basename(config_file))
+            shutil.copy2(config_file, config_dest)
+            print(f"Fichier de configuration copié vers : {config_dest}")
+        except Exception as e:
+            print(f"Erreur lors de la copie du fichier de configuration : {e}")
     
     return {
         'base': output_dir,
@@ -1006,7 +1016,7 @@ Examples:
     if not os.path.exists(base_path):
         os.makedirs(base_path)
     
-    dirs = setup_directories(base_path)
+    dirs = setup_directories(base_path, args.config_file)
     
     # Print configuration summary
     print("\n" + "="*80)
