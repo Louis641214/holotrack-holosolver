@@ -31,7 +31,12 @@ import math
 import cupy as cp
 from cupy.fft import fft2, ifft2, fftshift, ifftshift
 from cupyx import jit
-from .traitement_holo import *
+
+# Handle both relative and absolute imports for flexibility
+try:
+    from .traitement_holo import *
+except ImportError:
+    from traitement_holo import *
 
 
 @jit.rawkernel()

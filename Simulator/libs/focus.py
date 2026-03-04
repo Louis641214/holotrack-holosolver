@@ -30,7 +30,12 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 import numpy as np
 import cupy as cp
 from cupyx.scipy import ndimage as cp_ndimage
-from . traitement_holo import *
+
+# Handle both relative and absolute imports for flexibility
+try:
+    from .traitement_holo import *
+except ImportError:
+    from traitement_holo import *
 
 from enum import Enum
 class Focus_type(Enum):
