@@ -1,17 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Visualiseur des sorties horodatées (ex: 2026_03_03_17_37_08).
-
-Permet de:
-- lister automatiquement les dossiers générés dans Simulator/
-- explorer les fichiers produits
-- prévisualiser BMP/TIFF/NPY (2D/3D avec slider Z)
-- lire rapidement les fichiers texte (CSV/TXT/JSON)
-
-Usage:
-    python3 visualizer.py
-"""
-
 from __future__ import annotations
 
 import os
@@ -74,7 +60,6 @@ class GeneratedFilesVisualizer:
         body = ttk.Panedwindow(self.root, orient=tk.HORIZONTAL)
         body.pack(fill=tk.BOTH, expand=True, padx=8, pady=(0, 8))
 
-        # Panneau gauche: runs
         left = ttk.Frame(body, padding=6)
         body.add(left, weight=2)
 
@@ -91,7 +76,6 @@ class GeneratedFilesVisualizer:
         self.runs_tree.pack(fill=tk.BOTH, expand=True, pady=(6, 0))
         self.runs_tree.bind("<<TreeviewSelect>>", self.on_run_selected)
 
-        # Panneau milieu: files
         middle = ttk.Frame(body, padding=6)
         body.add(middle, weight=2)
 
@@ -101,7 +85,6 @@ class GeneratedFilesVisualizer:
         self.files_list.pack(fill=tk.BOTH, expand=True, pady=(6, 0))
         self.files_list.bind("<<ListboxSelect>>", self.on_file_selected)
 
-        # Panneau droit: preview
         right = ttk.Frame(body, padding=6)
         body.add(right, weight=3)
 
@@ -158,7 +141,6 @@ class GeneratedFilesVisualizer:
     def _discover_runs(self, root: Path) -> list[RunInfo]:
         runs: list[RunInfo] = []
         for current_root, dirnames, _ in os.walk(root):
-            # filtre rapide: ne pas descendre dans les dossiers cachés
             dirnames[:] = [d for d in dirnames if not d.startswith(".")]
             for dirname in dirnames:
                 if RUN_PATTERN.match(dirname):
@@ -292,7 +274,6 @@ class GeneratedFilesVisualizer:
 
         if arr.ndim == 3:
             if self.z_axis is None:
-                # Cas RGB/RGBA probable
                 if arr.shape[-1] in (3, 4):
                     return arr
                 return arr[0]
@@ -310,7 +291,6 @@ class GeneratedFilesVisualizer:
         if arr.ndim != 3:
             return None
 
-        # RGB / RGBA
         if arr.shape[-1] in (3, 4):
             return None
 
@@ -364,10 +344,9 @@ class GeneratedFilesVisualizer:
 
 
 def main() -> None:
-    script_dir = Path(__file__).resolve().parent.parent  # Simulator/
-    results_dir = script_dir / "results"  # Simulator/results/
+    script_dir = Path(__file__).resolve().parent.parent
+    results_dir = script_dir / "results"
     
-    # Vérifier que le dossier results existe
     if not results_dir.exists():
         results_dir.mkdir(parents=True, exist_ok=True)
     
