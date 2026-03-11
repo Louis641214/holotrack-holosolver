@@ -66,12 +66,20 @@ def train(model, U_z0, optimizer):
 
     optimizer.zero_grad()
 
-    loss_physics, loss_bc, weighted_loss_sparsity, weighted_loss_tv, total_loss = model(U_z0)
+    loss_physics, loss_bc, weighted_loss_sparsity, weighted_loss_tv, total_loss, volume_3d = model(U_z0)
     
     total_loss.backward()
+    
+    total_norm = 0.0
+    for p in model.parameters():
+        if p.grad is not None:
+            param_norm = p.grad.detach().data.norm(2)
+            total_norm += param_norm.item() ** 2
+    total_norm = total_norm ** 0.5
+    
     optimizer.step()
 
-    return loss_physics.item(), loss_bc.item(), weighted_loss_sparsity.item(), weighted_loss_tv.item(), total_loss.item()
+    return loss_physics.item(), loss_bc.item(), weighted_loss_sparsity.item(), weighted_loss_tv.item(), total_loss.item(), volume_3d, total_norm
 
 def test(model, cfg):
     model.eval()
