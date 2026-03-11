@@ -1,11 +1,14 @@
 import torch
 import torch.nn as nn 
 from .positional_encoding import PositionalEncoding
+
+"""
 try:
     import tinycudann as tcnn
 except ImportError:
     print("Erreur : tinycudann n'est pas installé.")
     exit()
+"""
 
 
 class HoloTrack(nn.Module):

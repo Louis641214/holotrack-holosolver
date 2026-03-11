@@ -1,11 +1,12 @@
 import torch
 import torch.nn as nn 
+"""
 try:
     import tinycudann as tcnn
 except ImportError:
     print("Erreur : tinycudann n'est pas installé.")
     exit()
-
+"""
 
 class Hash_Grid(nn.Module):
     def __init__(self):

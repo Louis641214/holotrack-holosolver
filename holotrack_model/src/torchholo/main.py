@@ -65,17 +65,30 @@ def train(config):
     else :
         param_groups = [
         {"params": nerf_params}, 
-        {"params": physics_params, "lr": optim_config["scheduler"]["lr_physics"]}
+        {"params": physics_params, "lr": optim_config["lr_physics"]}
         ]
     optimizer = optim.get_optimizer(optim_config, param_groups)
     
     #-----------Scheduler-------------
     if optim_config["scheduler"]["activ"] is True : 
+        """
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer, 
+            mode="min", 
+            factor=optim_config["scheduler"]["factor"],
+            patience=optim_config["scheduler"]["patience"],
+            threshold=optim_config["scheduler"]["threshold"],
+            threshold_mode=optim_config["scheduler"]["threshold_mode"]
+        )
+        """
         scheduler = torch.optim.lr_scheduler.MultiStepLR(
             optimizer, 
-            milestones=optim_config["scheduler"]["milestones"], 
-            gamma=optim_config["scheduler"]["gamma"]
-        )
+            milestones=["scheduler"]["milestones"],
+            gamma=optim_config["scheduler"]["gamma"])
+
+    #-----------Stop criteria-------------
+    if optim_config["stop_criteria"]["activ"] is True : 
+        stop_criteria = optim.VolumeDelta(optim_config["stop_criteria"])
 
     # --------Build the callbacks-------
     logging_config = config["logging"]
@@ -85,7 +98,6 @@ def train(config):
     if not os.path.isdir(logdir):
         os.makedirs(logdir)
     logging.info(f"Will be logging into {logdir}")
-
 
     logdir = pathlib.Path(logdir)
     with open(logdir / "config.yaml", "w") as file:
@@ -122,6 +134,8 @@ def train(config):
     tensorboard_writer.add_image("Visu/True_Holo", target_image.unsqueeze(0), 0)
     clean_target = U_z0.clone()
 
+    loss_buffer = 0.0
+
     #-------------Train LOOP--------------
     for e in progress_bar:
         
@@ -142,19 +156,25 @@ def train(config):
             tensorboard_writer.add_scalar("Params/BARF_Progress", current_alpha, e)
 
         #------------TRAIN call--------------      
-        loss_physics, loss_bc, weighted_loss_sparsity, weighted_loss_tv, total_loss = utils.train(model, U_z0, optimizer)
+        loss_physics, loss_bc, weighted_loss_sparsity, weighted_loss_tv, total_loss, volume_3d, total_norm = utils.train(model, U_z0, optimizer)
 
         #------------Scheduler call-----------
         if optim_config["scheduler"]["activ"] is True : 
-            scheduler.step()
-            optimizer.param_groups[1]["lr"] = optim_config["scheduler"]["lr_physics"]
-            tensorboard_writer.add_scalar("Params/Lr_Nerf", optimizer.param_groups[0]["lr"], e)
-            tensorboard_writer.add_scalar("Params/Lr_Physics", optimizer.param_groups[1]["lr"], e)
+            loss_buffer+=total_loss
+            if e>2600 and e%200==0:
+                avg_loss_200 = loss_buffer/200
+                logging.info(f"avg loss : {avg_loss_200}")
+                scheduler.step(avg_loss_200)
+                loss_buffer = 0.0
+                #optimizer.param_groups[1]["lr"] = optim_config["lr_physics"]
+                tensorboard_writer.add_scalar("Params/Lr_Nerf", optimizer.param_groups[0]["lr"], e)
+                tensorboard_writer.add_scalar("Params/Lr_Physics", optimizer.param_groups[1]["lr"], e)
         
         #------------TQDM loss info------------
         progress_bar.set_postfix({"loss": f"{total_loss:.8f}"})
 
         #-----------TensorBoard adding-------------
+        tensorboard_writer.add_scalar("Params/Norm_grad", total_norm, e)
         tensorboard_writer.add_scalar("Loss/total", total_loss, e)
         tensorboard_writer.add_scalar("Loss/Physics", loss_physics, e)
         tensorboard_writer.add_scalar("Loss/BC", loss_bc, e)
@@ -164,7 +184,7 @@ def train(config):
         tensorboard_writer.add_scalar("Params/Incident_Light", model.incident_light.item(), e)
         
         #-----------Reconstruct hologram-------------
-        if e%100==0 : 
+        if e%200==0 : 
             if model.hash is True: 
                 raw_holo = model.reconstruct_hologram_hash().detach().cpu()
             else : 
@@ -176,15 +196,33 @@ def train(config):
             if data_config["blurring"]["activ"] :
                 tensorboard_writer.add_image("Visu/Actual_Holo", U_z0.detach().cpu().unsqueeze(0), e)
         
+        #----------Stop Criteria update----------
+        if optim_config["stop_criteria"]["activ"] is True : 
+            if e % stop_criteria.check_interval == 0 :
+                done, relative_change = stop_criteria.update(volume_3d)
+                tensorboard_writer.add_scalar("Params/Stop_criteria", relative_change, e)
+                logging.info(f"Volume fixed for {stop_criteria.current_patience*stop_criteria.check_interval}")
+                logging.info(f"Patience : {stop_criteria.current_patience}")
+                if done :
+                    logging.info(f"STOP TRAINING FORCED")
+                    model_checkpoint.update(total_loss)
+                    logging.info("=Generation of volume")
+                    test_config = config["test"]
+                    utils.test(model, test_config)
+                    break
+
         #----------Save Model weights----------
-        if e%1000==0:
+        if e>0 and e%1000==0:
             model_checkpoint.update(total_loss)
+            logging.info("=Generation of volume")
+            test_config = config["test"]
+            utils.test(model, test_config)
 
     #---------End training resume----------
     phase_shift, incident_light = model.get_internal_values()
-    torch.save(model.state_dict(), str(logdir / "best_model.pt"))
     logging.info("-" * 30)
     logging.info("END TRAINING")
+    logging.info(f"Stopped at epoch    : {e}")
     logging.info(f"MODEL SAVED TO      : {str(logdir / 'best_model.pt')}")
     logging.info(f"Total   Loss        : {total_loss}")
     logging.info(f"Physics Loss        : {loss_physics}")

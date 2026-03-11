@@ -227,7 +227,7 @@ class HoloSolver(nn.Module) :
                 U_z_following_prop = self.Physics_model.angular_spectrum_propagator(image=U_z_following_prop)
         
         loss+=weighted_loss_sparsity
-        return loss, weighted_loss_sparsity
+        return loss, weighted_loss_sparsity, volume_3d
     
     def forward_BC(self) : 
         """
@@ -879,6 +879,7 @@ class HoloSolver(nn.Module) :
             U_z0 : Target hologram to reconstruct.
             """
             loss_bc = torch.tensor(0.0, dtype=torch.float32, device=self.device)
+            volume_3d = None
             weighted_loss_sparsity = torch.tensor(0.0, dtype=torch.float32, device=self.device)
             if self.hash :
                 loss_physics, weighted_loss_sparsity, weighted_loss_tv, loss_bc_z = self.forward_physics_hash(U_z0)
@@ -886,10 +887,10 @@ class HoloSolver(nn.Module) :
                     loss_bc = self.forward_BC_hash()
                     loss_bc+=loss_bc_z
             else : 
-                loss_physics, weighted_loss_sparsity = self.forward_physics(U_z0)
+                loss_physics, weighted_loss_sparsity, volume_3d = self.forward_physics(U_z0)
                 if self.with_bc :
                     loss_bc = self.forward_BC()
                 weighted_loss_tv = torch.tensor(0.0, dtype=torch.float32, device=self.device)
 
             total_loss = loss_physics + loss_bc
-            return loss_physics, loss_bc, weighted_loss_sparsity, weighted_loss_tv, total_loss
+            return loss_physics, loss_bc, weighted_loss_sparsity, weighted_loss_tv, total_loss, volume_3d

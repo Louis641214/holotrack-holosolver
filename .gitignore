@@ -52,3 +52,5 @@ Simulator/biblio/
 Simulator/wandb/
 Simulator/**/*.npy
 Simulator/wandb_api.txt
+
+**/Results/
