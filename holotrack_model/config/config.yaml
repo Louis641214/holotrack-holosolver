@@ -1,30 +1,54 @@
 data:
-  root_dir: ./Simulator/results/2026_03_04_15_17_44/simulated_hologram/holo0.tiff
+  root_dir: ./Simulator/results/2026_03_11_13_11_42/simulated_hologram/holo_0.tiff
+  blurring:
+    activ: false
+    blur_epochs: 2000
+    max_sigma: 1.0
+    min_sigma: 0.1
+    kernel_size: 9
 optim:
   algo: Adam
   params:
-    lr: 0.0001
-nepochs: 5000
+    lr: 0.0005
+    eps: 1.0e-07
+    betas:
+    - 0.9
+    - 0.95
+  lr_physics: 0.005
+  scheduler:
+    activ: false
+    milestones:
+    - 3000
+    gamma: 0.1
+    warm_start: false
+  stop_criteria:
+    activ: true
+    patience: 3
+    interval: 200
+    delta: 0.0001
+nepochs: 20000
 model:
   class: HoloSolver
   regularization:
     with_bc: true
     with_sparsity: true
-    sparsity_weight: 0.05
-    with_tv: true
-    tv_weight: 0.01
+    sparsity_weight: 0.01
+    with_tv: false
+    tv_weight: 0.0005
   physical_params:
-    phase_shift: 0.005
-    physicalLength: 0.25
+    phase_shift: 0.0714
+    physicalLength: 0.1375
     step_z: 0.5
     waveLength: 0.66
-    z_max: 100.0
+    z_max: 50.0
   nerf_params:
     model: MorpHoloNet
     gaussian_proj: 64
-    gaussian_scale: 7
+    gaussian_scale: 10
+    barf: false
+    barf_epochs: 1000
 test:
-  save_dir: ./holotrack_model/Results/2026_03_04_15_17_44
-  weights_path: ./logs/HoloSolver_39/best_model.pt
+  save_dir: ../Results
+  weights_path: ./logs/HoloSolver_70/best_model.pt
 logging:
-  logdir: ./holotrack_model/Logs/2026_03_04_15_17_44
+  logdir: ./logs
