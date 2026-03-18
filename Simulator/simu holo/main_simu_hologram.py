@@ -181,11 +181,14 @@ def save_hologram_results(dirs, n, intensity_image,
         Image.fromarray(intensity_normalized).save(holo_bmp_file)
         print(f"    [OK] Saved hologram BMP: {holo_bmp_file}")
     
-    # Hologram TIFF 32bits
     if save_options.get('hologram_tiff', False):
         holo_tiff_file = os.path.join(chemin_holograms, f"holo_{n}.tiff")
-        tifffile.imwrite(holo_tiff_file, intensity_image.astype(np.float32))
-        print(f"    [OK] Saved hologram TIFF: {holo_tiff_file}")
+        # Normalisation Min-Max en float32 (0.0 à 1.0)
+        img_min = intensity_image.min()
+        img_max = intensity_image.max()
+        intensity_floated = (intensity_image - img_min) / (img_max - img_min + 1e-10)
+        
+        tifffile.imwrite(holo_tiff_file, intensity_floated.astype(np.float32))
     
     # Hologram NPY 32bits
     if save_options.get('hologram_npy', False):

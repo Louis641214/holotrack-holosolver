@@ -3,9 +3,9 @@
     "num_holograms": 1,
     "output_dir": "Simulator/results",
     
-    "num_objects": 10,
+    "num_objects": 1,
     
-    "holo_size_xy": 1024,
+    "holo_size_xy": 256,
     "border": 256,
     "upscale_factor": 2,
     "z_size": 100,
@@ -23,8 +23,8 @@
     "wavelength": 660e-9,
     
     "illumination_mean": 1.0,
-    "noise_std_min": 0.01,
-    "noise_std_max": 0.1,
+    "noise_std_min": 0,
+    "noise_std_max": 0,
     
     "distance_volume_camera": 0.01,
     
