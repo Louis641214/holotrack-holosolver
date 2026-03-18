@@ -7,7 +7,7 @@ LOCAL_PATH="./Results_test"
 
 echo "🚀 Début du transfert depuis $REMOTE_USER_HOST..."
 
-rm -rf "$LOCAL_PATH/*"
+rm -rf "$LOCAL_PATH/"*
 scp -r "$REMOTE_USER_HOST:$REMOTE_PATH/*" "$LOCAL_PATH"
 
 # Vérification du succès

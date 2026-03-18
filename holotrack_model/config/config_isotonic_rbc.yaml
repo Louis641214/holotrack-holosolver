@@ -28,12 +28,13 @@ optim:
     activ: False
     milestones: [3000]
     gamma: 0.1
-    
+    warm_start: False
+
   stop_criteria:
-    activ: False
+    activ: True
     patience: 3
     interval: 200
-    delta: 0.03
+    delta: 0.0001
 
 nepochs: 20000
 
@@ -43,7 +44,7 @@ model:
   regularization:
     with_bc: True
     with_sparsity: True
-    sparsity_weight: 0.01 #0.001
+    sparsity_weight: 0.00002 #0.001
     with_tv: False
     tv_weight: 0.0005
   
