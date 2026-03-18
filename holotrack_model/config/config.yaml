@@ -1,5 +1,5 @@
 data:
-  root_dir: ./Simulator/results/2026_03_11_13_11_42/simulated_hologram/holo_0.tiff
+  root_dir: ./Simulator/results/2026_03_11_16_41_50/simulated_hologram/holo_0.tiff
   blurring:
     activ: false
     blur_epochs: 2000
@@ -44,7 +44,7 @@ model:
   nerf_params:
     model: MorpHoloNet
     gaussian_proj: 64
-    gaussian_scale: 10
+    gaussian_scale: 7
     barf: false
     barf_epochs: 1000
 test:
