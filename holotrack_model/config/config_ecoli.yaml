@@ -1,21 +1,52 @@
 data:
   root_dir: ../holograms/E_coli.tif
+  blurring:
+    activ: False
+    blur_epochs: 2000
+    max_sigma: 1.0
+    min_sigma: 0.1
+    kernel_size: 9
 
 optim:
   algo: Adam
   params:
-    lr: 0.0001 # learning rate: 0.00001~0.0001
+    lr: 0.0005 # 0.0005
+    eps: 0.0000001
+    betas: [0.9, 0.95]
 
-nepochs: 5000
+  lr_physics: 0.005
+
+  #scheduler:
+  #  activ: True
+  #  factor: 0.1
+  #  patience: 1
+  #  threshold: 0.0001
+  #  threshold_mode: "abs"
+  #  warm_start: False
+
+  scheduler:
+    activ: False
+    milestones: [3000]
+    gamma: 0.1
+    warm_start: False
+    
+  stop_criteria:
+    activ: True
+    patience: 3
+    interval: 200
+    delta: 0.0001
+
+nepochs: 20000
+
 model:
   class: "HoloSolver"
 
   regularization:
     with_bc: True
-    with_sparsity: True
-    sparsity_weight: 0.05
-    with_tv: True
-    tv_weight: 0.01
+    with_sparsity: True # Paramètre a mettre sur false si mauvaise reconstruction
+    sparsity_weight: 0.00002 #0.001
+    with_tv: False
+    tv_weight: 0.0005
   
   physical_params:
     phase_shift: 0.335
@@ -24,17 +55,16 @@ model:
     waveLength: 0.3991
     z_max: 30
 
-  #nerf_params:
-  #  model: "Hash_Grid"
-
   nerf_params:
     model: "MorpHoloNet"
     gaussian_proj: 64
-    gaussian_scale: 7
+    gaussian_scale: 10
+    barf: False
+    barf_epochs: 1000
 
 test:
   save_dir: "../Results"
-  weights_path: "./logs/HoloSolver_39/best_model.pt"
+  weights_path: "./logs/HoloSolver_70/best_model.pt"
 
 logging:
   # wandb: 

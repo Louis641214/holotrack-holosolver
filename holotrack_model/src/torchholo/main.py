@@ -6,12 +6,15 @@ import sys
 import os
 import pathlib
 
+
 # External imports
 import yaml
 import torch
 #import torchinfo.torchinfo as torchinfo
 import tqdm
 from torch.utils.tensorboard import SummaryWriter
+import numpy as np
+import random
 
 # Local imports
 from . import data
@@ -19,6 +22,17 @@ from . import models
 from . import optim
 from . import utils
 
+# Fixer la graine pour que chaque run soit identique
+"""
+seed = 302  # Tu peux tester 42, 0, ou 1234
+torch.manual_seed(seed)
+torch.cuda.manual_seed(seed)
+torch.cuda.manual_seed_all(seed)
+np.random.seed(seed)
+random.seed(seed)
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
+"""
 
 def train(config):
     #----------Get CUDA device----------
@@ -157,6 +171,14 @@ def train(config):
 
         #------------TRAIN call--------------      
         loss_physics, loss_bc, weighted_loss_sparsity, weighted_loss_tv, total_loss, volume_3d, total_norm = utils.train(model, U_z0, optimizer)
+
+        #-----------Parameters-Norm------------
+        total_param_norm = 0.0
+        for p in model.parameters():
+            param_norm = p.detach().data.norm(2) # L2 norm du tenseur de poids
+            total_param_norm += param_norm.item() ** 2
+        total_param_norm = total_param_norm ** 0.5
+        tensorboard_writer.add_scalar("Params/Weights_Norm", total_param_norm, e)
 
         #------------Scheduler call-----------
         if optim_config["scheduler"]["activ"] is True : 

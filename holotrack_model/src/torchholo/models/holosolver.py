@@ -192,8 +192,38 @@ class HoloSolver(nn.Module) :
         volume_3d_complex = torch.complex(volume_3d, self.zeros_grid)
         full_phase_delay = torch.exp(complex_i * phase_shift_complex * volume_3d_complex)
         
+        
         if self.with_sparsity:
-            loss_sparsity = torch.mean(torch.sqrt(torch.abs(volume_3d) + 1e-8))
+            """
+            # --- FREE SPACE PRIOR (Optimize the Unseen, NeurIPS 2025) ---
+            flat_volume = volume_3d.view(-1)
+            N_samples = flat_volume.numel() // 10
+            random_indices = torch.randint(0, flat_volume.numel(), (N_samples,), device=self.device)
+            sampled_densities = flat_volume[random_indices]
+            loss_sparsity = torch.mean(torch.square(torch.sigmoid(sampled_densities * 50.0)))
+            """
+            # --- RAY ENTROPY LOSS (Compression sur l'axe Z) ---
+            eps = 1e-8
+            # 1. On s'assure que les valeurs sont positives
+            vol_abs = torch.abs(volume_3d) + eps 
+            
+            # 2. On fait la somme des densités le long de l'axe Z (dim=0)
+            # Ça nous donne le "poids total" de matière pour chaque pixel (X, Y)
+            z_sum = torch.sum(vol_abs, dim=0, keepdim=True)
+            
+            # 3. On normalise pour créer une "probabilité" de présence sur l'axe Z
+            # p_z sera proche de 1 si tout est au même endroit, et proche de 0.01 si c'est étalé
+            prob_z = vol_abs / z_sum
+            
+            # 4. Calcul de l'Entropie : - p * log(p)
+            entropy = - prob_z * torch.log(prob_z + eps)
+            
+            # 5. On somme l'entropie sur l'axe Z pour chaque rayon, puis on fait la moyenne globale
+            ray_entropy = torch.sum(entropy, dim=0)
+            loss_sparsity = torch.mean(ray_entropy)
+        # --------------------------------------------------
+            # ----------------------------------------------------------------
+
             
         weighted_loss_sparsity = self.sparsity_weight * loss_sparsity
         
