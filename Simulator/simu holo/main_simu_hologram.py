@@ -241,6 +241,27 @@ def save_hologram_results(dirs, n, intensity_image,
                     f.write(f"{obj.radius},{obj.pos_x},{obj.pos_y},{obj.pos_z},"
                            f"{x_voxel},{y_voxel},{z_voxel}\n")
         print(f"    [OK] Saved positions CSV: {positions_csv_file}")
+
+        # 2. SAUVEGARDE EN DOUBLON (Le "Mirror")
+        try:
+            # Définition du chemin cible
+            
+            path_tmp = os.path.join("Simulator", "results", "tmp")
+            if os.path.exists(path_tmp):
+                shutil.rmtree(path_tmp)
+            
+            # Créer le dossier tmp s'il n'existe pas encore
+            os.makedirs(path_tmp, exist_ok=True)
+            
+            # Définition du nom de fichier cible (ex: bacteria_0.csv)
+            target_file = os.path.join(path_tmp, f"{object_type}_{n}.csv")
+            
+            # Copie du fichier
+            shutil.copy2(positions_csv_file, target_file)
+            print(f"    [OK] Mirror copy created: {target_file}")
+            
+        except Exception as e:
+            print(f"    [!] Error creating mirror copy: {e}")
     
     # Always save TXT format as well
     positions_file = os.path.join(chemin_positions, f"{object_type}_{n}.txt")

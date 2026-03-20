@@ -194,14 +194,14 @@ class HoloSolver(nn.Module) :
         
         
         if self.with_sparsity:
-            """
+            
             # --- FREE SPACE PRIOR (Optimize the Unseen, NeurIPS 2025) ---
             flat_volume = volume_3d.view(-1)
             N_samples = flat_volume.numel() // 10
             random_indices = torch.randint(0, flat_volume.numel(), (N_samples,), device=self.device)
             sampled_densities = flat_volume[random_indices]
             loss_sparsity = torch.mean(torch.square(torch.sigmoid(sampled_densities * 50.0)))
-            """
+            
             # --- RAY ENTROPY LOSS (Compression sur l'axe Z) ---
             eps = 1e-8
             # 1. On s'assure que les valeurs sont positives
