@@ -53,5 +53,6 @@ Simulator/wandb/
 Simulator/**/*.npy
 Simulator/wandb_api.txt
 Simulator/results/
+Simulator/simu\ holo/configs/config_bacteria_random.json
 
 **/Results/

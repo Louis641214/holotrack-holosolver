@@ -1,5 +1,5 @@
 data:
-  root_dir: ./Simulator/results/2026_03_11_16_41_50/simulated_hologram/holo_0.tiff
+  root_dir: ../../Simulator/results/2026_03_19_00_19_13/simulated_hologram/holo_0.tiff
   blurring:
     activ: false
     blur_epochs: 2000
@@ -22,7 +22,7 @@ optim:
     gamma: 0.1
     warm_start: false
   stop_criteria:
-    activ: true
+    activ: false
     patience: 3
     interval: 200
     delta: 0.0001
@@ -31,8 +31,8 @@ model:
   class: HoloSolver
   regularization:
     with_bc: true
-    with_sparsity: true
-    sparsity_weight: 0.01
+    with_sparsity: false
+    sparsity_weight: 2.0e-05
     with_tv: false
     tv_weight: 0.0005
   physical_params:
@@ -44,7 +44,7 @@ model:
   nerf_params:
     model: MorpHoloNet
     gaussian_proj: 64
-    gaussian_scale: 7
+    gaussian_scale: 10
     barf: false
     barf_epochs: 1000
 test:
