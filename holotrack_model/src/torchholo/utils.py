@@ -6,6 +6,8 @@ import os
 # External imports
 import torch
 import torch.nn
+import shutil
+import os
 
 
 def generate_unique_logpath(logdir, raw_run_name):
@@ -81,10 +83,13 @@ def train(model, U_z0, optimizer):
 
     return loss_physics.item(), loss_bc.item(), weighted_loss_sparsity.item(), weighted_loss_tv.item(), total_loss.item(), volume_3d, total_norm
 
-def test(model, cfg):
+def test(model, save_dir, e):
     model.eval()
-    save_dir = cfg["save_dir"]
+
+    epoch_dir = os.path.join(save_dir, f"weights_{e}")
+    os.makedirs(epoch_dir, exist_ok=True)
+
     if model.hash is True:
-        model.generate_output_hash(save_dir)
+        model.generate_output_hash(epoch_dir)
     else : 
-        model.generate_output(save_dir)
+        model.generate_output(epoch_dir)

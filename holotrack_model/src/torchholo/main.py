@@ -15,6 +15,7 @@ import tqdm
 from torch.utils.tensorboard import SummaryWriter
 import numpy as np
 import random
+import shutil
 
 # Local imports
 from . import data
@@ -150,6 +151,14 @@ def train(config):
 
     loss_buffer = 0.0
 
+    #-----------Create Result folder--------
+    save_dir = config["test"]["save_dir"]
+
+    if os.path.exists(save_dir):
+        shutil.rmtree(save_dir)
+
+    os.makedirs(save_dir, exist_ok=True)
+
     #-------------Train LOOP--------------
     for e in progress_bar:
         
@@ -238,7 +247,7 @@ def train(config):
             model_checkpoint.update(total_loss)
             logging.info("=Generation of volume")
             test_config = config["test"]
-            utils.test(model, test_config)
+            utils.test(model, save_dir, e)
 
     #---------End training resume----------
     phase_shift, incident_light = model.get_internal_values()
