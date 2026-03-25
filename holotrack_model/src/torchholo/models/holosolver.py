@@ -279,12 +279,7 @@ class HoloSolver(nn.Module) :
         """
         obj_dir = os.path.join(save_dir, 'obj')
         intensity_dir = os.path.join(save_dir, 'intensity')
-
-        if os.path.exists(obj_dir):
-            shutil.rmtree(obj_dir)
-        if os.path.exists(intensity_dir):
-            shutil.rmtree(intensity_dir)
-
+        
         os.makedirs(obj_dir, exist_ok=True)
         os.makedirs(intensity_dir, exist_ok=True)
 
