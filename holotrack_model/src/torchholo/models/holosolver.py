@@ -12,7 +12,7 @@ from .hash_grid import Hash_Grid
 from .holotrack import HoloTrack
 
 class HoloSolver(nn.Module) :
-    def __init__(self, physical_params, nerf_params, regularization_params, U_z0, device):
+    def __init__(self, physical_params, nerf_params, regularization_params, pre_training_params, U_z0, device):
         super(HoloSolver, self).__init__()
 
         # ==============================================================================
@@ -61,6 +61,11 @@ class HoloSolver(nn.Module) :
         else : 
             self._init_physics_buffer()
             self._init_bc_buffer()
+        
+        if pre_training_params["activ"] is True : 
+            self._init_pretraining(pre_training_params)
+            self.pre_training_activ = True 
+            self.nb_epochs_pre_training = pre_training_params["epochs"]
 
         # ==============================================================================
         # REGULARIZATION : Parameters of regularization
@@ -300,6 +305,7 @@ class HoloSolver(nn.Module) :
         
         np.save(os.path.join(obj_dir, "volume_3d.npy"), obj_volume)
 
+        """
         # ======================================================================
         # PARTIE 2 : Propagation Physique (Backward Propagation)
         # ======================================================================
@@ -362,7 +368,7 @@ class HoloSolver(nn.Module) :
                 U_z_following_prop_intensity = torch.square(torch.abs(U_z_following_prop)).cpu().numpy()
                 U_z_following_prop_intensity = Image.fromarray(U_z_following_prop_intensity)
                 U_z_following_prop_intensity.save(os.path.join(intensity_dir, f"Intensity_MorpHoloNet_{z.item():.1f}.tif"))
-
+        """
         print("Generation done")
 
     @torch.no_grad()
@@ -603,7 +609,6 @@ class HoloSolver(nn.Module) :
         return torch.clamp(z_final, 0.0, 1.0 - 1e-5)
 
     def forward_BC_hash(self) : 
-            
             """
             NOTE: This method is not maintained.
 
@@ -896,26 +901,93 @@ class HoloSolver(nn.Module) :
                 module.alpha_progress.fill_(progress)
                 return progress 
         return 1.0
+    
+    def _init_pretraining(self, pre_training_params) :
+        """
+        Initialise useful parameters for pre-training
 
-    def forward(self, U_z0):
+        pre_training_params : parameters given for pre-training
+        """
+
+        self.pretrain_targets = []
+        targets = pre_training_params["targets"]
+
+        for target in targets : 
+            x0 = target["x0"] / self.width
+            y0 = target["y0"] / self.height
+            z0 = target["z0"] / self.z_max
+            r = target["r"]
+
+            #Var formulas for ellipsoid
+            var_x = (r / self.width) ** 2
+            var_y = (r / self.height) ** 2
+            var_z = ((0.5 * r * self.physicalLength) / self.z_max) ** 2
+
+            self.pretrain_targets.append({"x0" : x0, 
+                                          "y0" : y0, 
+                                          "z0" : z0, 
+                                          "var_x" : var_x, 
+                                          "var_y" : var_y, 
+                                          "var_z" : var_z})
+
+    def forward_pretraining(self):
+        """
+        Pre-train the nerf model to predict ellipsoids
+        """
+        loss = torch.tensor(0.0, dtype=torch.float32, device=self.device)
+        global_gaussian = torch.zeros(self.coords_3d.shape[0], dtype=torch.float32, device=self.device)
+
+        densities_1d = self.Nerf(self.coords_3d)
+
+        for target in self.pretrain_targets :
+            exponent = -0.5 * (
+                    ((self.coords_3d[:, 0] - target["x0"]) ** 2) / target["var_x"] +
+                    ((self.coords_3d[:, 1] - target["y0"]) ** 2) / target["var_y"] +
+                    ((self.coords_3d[:, 2] - target["z0"]) ** 2) / target["var_z"]
+                )
+            local_gaussian = torch.exp(exponent)
+            
+            #The maximum here (instead of sum) prevent us to have values higher than 1.0 and 
+            # that will be not compatible with the sigmoid function of our Nerf
+            global_gaussian = torch.maximum(global_gaussian, local_gaussian)
+
+        global_gaussian = global_gaussian.unsqueeze(-1)
+        
+        weights = 1.0 + 100.0 * global_gaussian
+        loss += torch.mean(weights * torch.square(densities_1d - global_gaussian))
+
+        return loss
+        
+
+    def forward(self, U_z0, e):
             """
             Execute the training model based on provided parameters. 
 
             U_z0 : Target hologram to reconstruct.
+
+            e : Number of the current epoch.
             """
             loss_bc = torch.tensor(0.0, dtype=torch.float32, device=self.device)
-            volume_3d = None
+            loss_physics = torch.tensor(0.0, dtype=torch.float32, device=self.device)
+            weighted_loss_tv = torch.tensor(0.0, dtype=torch.float32, device=self.device)
             weighted_loss_sparsity = torch.tensor(0.0, dtype=torch.float32, device=self.device)
+            total_loss = torch.tensor(0.0, dtype=torch.float32, device=self.device)
+            loss_pre_training = torch.tensor(0.0, dtype=torch.float32, device=self.device)
+            volume_3d = None
+
+
             if self.hash :
                 loss_physics, weighted_loss_sparsity, weighted_loss_tv, loss_bc_z = self.forward_physics_hash(U_z0)
                 if self.with_bc :
                     loss_bc = self.forward_BC_hash()
                     loss_bc+=loss_bc_z
             else : 
-                loss_physics, weighted_loss_sparsity, volume_3d = self.forward_physics(U_z0)
-                if self.with_bc :
-                    loss_bc = self.forward_BC()
-                weighted_loss_tv = torch.tensor(0.0, dtype=torch.float32, device=self.device)
-
-            total_loss = loss_physics + loss_bc
-            return loss_physics, loss_bc, weighted_loss_sparsity, weighted_loss_tv, total_loss, volume_3d
+                if self.pre_training_activ is True and e<=self.nb_epochs_pre_training:
+                    loss_pre_training = self.forward_pretraining()
+                    total_loss = loss_pre_training
+                else : 
+                    loss_physics, weighted_loss_sparsity, volume_3d = self.forward_physics(U_z0)
+                    if self.with_bc :
+                        loss_bc = self.forward_BC()
+                    total_loss = loss_physics + loss_bc
+            return loss_physics, loss_bc, weighted_loss_sparsity, weighted_loss_tv, total_loss, loss_pre_training, volume_3d

@@ -15,7 +15,8 @@ data_directory = directory + "/obj/volume_3d.npy"
 data = np.load(data_directory)
 data = np.flip(data, axis=2)
 data = (data - np.min(data)) / (np.max(data) - np.min(data) + 1e-8)
-csv = directory + "/bacteria_0.csv"
+parent_dir = os.path.dirname(directory.rstrip('/'))
+csv = os.path.join(parent_dir, "bacteria_0.csv")
 
 def extract_bacteria_positions(volume_3d, threshold=0.5, 
                                pix_size=5.5, magnification=40.0, step_z=0.5):
@@ -101,6 +102,7 @@ print(error_df)
 VISUALIZER 1 : 2D Visualization of each layer of holograms
 ------------------------------------------------------------
 '''
+"""
 intensity_dir = directory + '/intensity/'
 
 files = sorted([f for f in os.listdir(intensity_dir) if f.endswith('.tif')], 
@@ -142,7 +144,7 @@ def update(val):
 slider.on_changed(update)
 
 plt.show()
-
+"""
 
 '''
 ------------------------------------------------------------
@@ -150,7 +152,7 @@ VISUALIZER 2 : 2D Visualization of each layer of the object
 ------------------------------------------------------------
 '''
 
-
+"""
 num_layers = data.shape[2]
 
 
@@ -175,7 +177,7 @@ def update(val):
 slider.on_changed(update)
 
 plt.show()
-
+"""
 
 '''
 ----------------------------------------------

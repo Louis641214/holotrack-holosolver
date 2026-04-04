@@ -62,13 +62,13 @@ class ModelCheckpoint(object):
         return False
 
 
-def train(model, U_z0, optimizer):
+def train(model, U_z0, optimizer, e):
 
     model.train()
 
     optimizer.zero_grad()
 
-    loss_physics, loss_bc, weighted_loss_sparsity, weighted_loss_tv, total_loss, volume_3d = model(U_z0)
+    loss_physics, loss_bc, weighted_loss_sparsity, weighted_loss_tv, total_loss, loss_pre_training, volume_3d = model(U_z0, e)
     
     total_loss.backward()
     
@@ -81,7 +81,7 @@ def train(model, U_z0, optimizer):
     
     optimizer.step()
 
-    return loss_physics.item(), loss_bc.item(), weighted_loss_sparsity.item(), weighted_loss_tv.item(), total_loss.item(), volume_3d, total_norm
+    return loss_physics.item(), loss_bc.item(), weighted_loss_sparsity.item(), weighted_loss_tv.item(), total_loss.item(), loss_pre_training.item(), volume_3d, total_norm
 
 def test(model, save_dir, e):
     model.eval()
