@@ -3,9 +3,9 @@
     "num_holograms": 1,
     "output_dir": "Simulator/results",
     
-    "num_objects": 1,
+    "num_objects": 5,
     
-    "holo_size_xy": 256,
+    "holo_size_xy": 128,
     "border": 256,
     "upscale_factor": 2,
     "z_size": 100,

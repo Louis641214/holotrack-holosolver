@@ -178,8 +178,9 @@ def train(config):
             current_alpha = model.update_barf_progress(e, model_config["nerf_params"]["barf_epochs"])
             tensorboard_writer.add_scalar("Params/BARF_Progress", current_alpha, e)
 
-        #------------TRAIN call--------------      
-        loss_physics, loss_bc, weighted_loss_sparsity, weighted_loss_tv, total_loss, volume_3d, total_norm = utils.train(model, U_z0, optimizer)
+        #------------TRAIN call--------------  
+
+        loss_physics, loss_bc, weighted_loss_sparsity, weighted_loss_tv, total_loss, loss_pre_training, volume_3d, total_norm = utils.train(model, U_z0, optimizer, e)
 
         #-----------Parameters-Norm------------
         total_param_norm = 0.0
@@ -202,6 +203,10 @@ def train(config):
                 tensorboard_writer.add_scalar("Params/Lr_Physics", optimizer.param_groups[1]["lr"], e)
         
         #------------TQDM loss info------------
+        if e <= model_config["pre_training"]["epochs"] and model_config["pre_training"]["activ"] is True :
+            progress_bar.set_description("Pre-training")
+        else : 
+            progress_bar.set_description("Training")
         progress_bar.set_postfix({"loss": f"{total_loss:.8f}"})
 
         #-----------TensorBoard adding-------------
@@ -211,6 +216,7 @@ def train(config):
         tensorboard_writer.add_scalar("Loss/BC", loss_bc, e)
         tensorboard_writer.add_scalar("Loss/Sparcity", weighted_loss_sparsity, e)
         tensorboard_writer.add_scalar("Loss/TV", weighted_loss_tv, e)
+        tensorboard_writer.add_scalar("Loss/pre_training", loss_pre_training, e)
         tensorboard_writer.add_scalar("Params/Phase_shift", model.phase_shift.item(), e)
         tensorboard_writer.add_scalar("Params/Incident_Light", model.incident_light.item(), e)
         
@@ -243,7 +249,7 @@ def train(config):
                     break
 
         #----------Save Model weights----------
-        if e>0 and e%1000==0:
+        if (e>300 and e%1000==0) or (e==model_config["pre_training"]["epochs"]):
             model_checkpoint.update(total_loss)
             logging.info("=Generation of volume")
             test_config = config["test"]
