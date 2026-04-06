@@ -41,6 +41,14 @@ def train(config):
     device = torch.device("cuda") if use_cuda else torch.device("cpu")
     logging.info(f"= Using device {device}")
 
+    #--Get dtype compatibility (NeRF only)---
+    if torch.cuda.is_bf16_supported():
+        use_dtype = torch.bfloat16
+    else :
+        use_dtype = torch.float16
+    scaler = torch.amp.GradScaler(device="cuda", enabled=(use_dtype==torch.float16))
+    logging.info(f"= Using dtype {use_dtype} (NeRF only)")
+
     #-------------Dataloading-------------
     logging.info("= Getting initial holographic image (U_z0)")
     data_config = config["data"]
@@ -180,7 +188,7 @@ def train(config):
 
         #------------TRAIN call--------------  
 
-        loss_physics, loss_bc, weighted_loss_sparsity, weighted_loss_tv, total_loss, loss_pre_training, volume_3d, total_norm = utils.train(model, U_z0, optimizer, e)
+        loss_physics, loss_bc, weighted_loss_sparsity, weighted_loss_tv, total_loss, loss_pre_training, volume_3d, total_norm = utils.train(model, U_z0, optimizer, e, use_dtype, scaler)
 
         #-----------Parameters-Norm------------
         total_param_norm = 0.0
@@ -249,7 +257,7 @@ def train(config):
                     break
 
         #----------Save Model weights----------
-        if (e>300 and e%1000==0) or (e==model_config["pre_training"]["epochs"]):
+        if (e>300 and e%200==0) or (e==model_config["pre_training"]["epochs"]):
             model_checkpoint.update(total_loss)
             logging.info("=Generation of volume")
             test_config = config["test"]

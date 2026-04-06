@@ -62,15 +62,16 @@ class ModelCheckpoint(object):
         return False
 
 
-def train(model, U_z0, optimizer, e):
+def train(model, U_z0, optimizer, e, use_dtype, scaler):
 
     model.train()
 
     optimizer.zero_grad()
-
-    loss_physics, loss_bc, weighted_loss_sparsity, weighted_loss_tv, total_loss, loss_pre_training, volume_3d = model(U_z0, e)
     
-    total_loss.backward()
+    with torch.autocast(device_type='cuda', dtype=use_dtype):
+        loss_physics, loss_bc, weighted_loss_sparsity, weighted_loss_tv, total_loss, loss_pre_training, volume_3d = model(U_z0, e)
+    
+    scaler.scale(total_loss).backward()
     
     total_norm = 0.0
     for p in model.parameters():
@@ -79,7 +80,8 @@ def train(model, U_z0, optimizer, e):
             total_norm += param_norm.item() ** 2
     total_norm = total_norm ** 0.5
     
-    optimizer.step()
+    scaler.step(optimizer)
+    scaler.update()
 
     return loss_physics.item(), loss_bc.item(), weighted_loss_sparsity.item(), weighted_loss_tv.item(), total_loss.item(), loss_pre_training.item(), volume_3d, total_norm
 

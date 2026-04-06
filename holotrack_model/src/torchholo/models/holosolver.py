@@ -5,14 +5,16 @@ import os
 import shutil
 from PIL import Image
 from torch.amp import autocast
+from torch.utils.checkpoint import checkpoint
 
 from .morpholonet import MorpHoloNet
 from .physics_model import PhysicsModel
 from .hash_grid import Hash_Grid
 from .holotrack import HoloTrack
+from .deep_morpholonet import Deep_MorpHoloNet
 
 class HoloSolver(nn.Module) :
-    def __init__(self, physical_params, nerf_params, regularization_params, pre_training_params, U_z0, device):
+    def __init__(self, physical_params, nerf_params, regularization_params, pre_training_params, vram_params, U_z0, device):
         super(HoloSolver, self).__init__()
 
         # ==============================================================================
@@ -28,9 +30,15 @@ class HoloSolver(nn.Module) :
         elif nerf_params["model"] == "HoloTrack" : 
             self.Nerf = HoloTrack(nerf_params)
             self.hash = False
+        elif nerf_params["model"] == "Deep_MorpHoloNet" : 
+            self.Nerf = Deep_MorpHoloNet(nerf_params)
+            self.hash = False
 
         self.device = device
-        
+        self.vram_optim = vram_params["activ"]
+        self.chunk_size = vram_params.get("chunk_size", 0)  
+        self.checkpoint = vram_params.get("checkpoint", False)     
+
         # ==============================================================================
         # PARAMETERS 1 : Physics parameters
         # ============================================================================== 
@@ -66,7 +74,8 @@ class HoloSolver(nn.Module) :
             self._init_pretraining(pre_training_params)
             self.pre_training_activ = True 
             self.nb_epochs_pre_training = pre_training_params["epochs"]
-
+        else : 
+            self.pre_training_activ = False
         # ==============================================================================
         # REGULARIZATION : Parameters of regularization
         # ==============================================================================
@@ -184,10 +193,23 @@ class HoloSolver(nn.Module) :
         complex_i = torch.complex(self.scalar_zero, self.scalar_one)
         phase_shift_complex = torch.complex(self.phase_shift, self.scalar_zero)
 
+
         U_z_following_prop = torch.complex(self.zeros_grid, self.zeros_grid)
-        densities_1d = self.Nerf(self.coords_3d)
+
+        if self.vram_optim is True :
+            densities_1d_list = []
+            for i in range(0, self.coords_3d.shape[0], self.chunk_size):
+                chunk = self.coords_3d[i : i + self.chunk_size]
+
+                out_chunk = checkpoint(self.Nerf, chunk, use_reentrant=False)
+
+                densities_1d_list.append(out_chunk)
+            densities_1d = torch.cat(densities_1d_list, dim=0)
+        else : 
+            densities_1d = self.Nerf(self.coords_3d)
 
         volume_3d = densities_1d.squeeze(-1).view(len(self.z_values)+1, self.width, self.height)
+        volume_3d = volume_3d.to(torch.float32)
 
         real_following_ref = self.ones_grid * self.incident_light
         U_z_following_ref = torch.complex(real_following_ref, self.zeros_grid)
@@ -199,14 +221,14 @@ class HoloSolver(nn.Module) :
         
         
         if self.with_sparsity:
-            
+            """
             # --- FREE SPACE PRIOR (Optimize the Unseen, NeurIPS 2025) ---
             flat_volume = volume_3d.view(-1)
             N_samples = flat_volume.numel() // 10
             random_indices = torch.randint(0, flat_volume.numel(), (N_samples,), device=self.device)
             sampled_densities = flat_volume[random_indices]
             loss_sparsity = torch.mean(torch.square(torch.sigmoid(sampled_densities * 50.0)))
-            
+            """
             # --- RAY ENTROPY LOSS (Compression sur l'axe Z) ---
             eps = 1e-8
             # 1. On s'assure que les valeurs sont positives
@@ -232,36 +254,83 @@ class HoloSolver(nn.Module) :
             
         weighted_loss_sparsity = self.sparsity_weight * loss_sparsity
         
-        for i, z in enumerate(self.z_values):
-            object_following = volume_3d[i]
-            object_preceding = volume_3d[i+1]
-            phase_delay = full_phase_delay[i+1]
+        if self.checkpoint is True :
+            for i, z in enumerate(self.z_values):
+                object_following = volume_3d[i]
+                object_preceding = volume_3d[i+1]
+                phase_delay = full_phase_delay[i+1]
 
-            if i == 0 : 
-                
-                U_z_following_ref *= phase_delay
+                if i == 0 : 
+                    
+                    U_z_following_ref = U_z_following_ref * phase_delay
 
-                U_z_following_prop = self.Physics_model.angular_spectrum_propagator(image=U_z_following_ref)
+                    U_z_following_prop = checkpoint(
+                        self.Physics_model.angular_spectrum_propagator, 
+                        U_z_following_ref, 
+                        use_reentrant=False
+                    )
 
-                loss += 0.5*torch.mean(torch.square(object_following))
+                    loss = loss + 0.5*torch.mean(torch.square(object_following))
 
-            elif i==len(self.z_values)-1 :
+                elif i==len(self.z_values)-1 :
 
-                U_z_following_prop *= phase_delay
+                    U_z_following_prop = U_z_following_prop * phase_delay
 
-                U_z_following_prop = self.Physics_model.angular_spectrum_propagator(image=U_z_following_prop)
-                
-                U_z_following_prop_intensity = torch.square(torch.abs(U_z_following_prop))
+                    U_z_following_prop = checkpoint(
+                        self.Physics_model.angular_spectrum_propagator, 
+                        U_z_following_prop, 
+                        use_reentrant=False
+                    )
+                    
+                    U_z_following_prop_intensity = torch.square(torch.abs(U_z_following_prop))
 
-                loss += torch.mean(torch.square(U_z0 - U_z_following_prop_intensity))
-                loss += 0.5*torch.mean(torch.square(object_preceding))
+                    error_l2 = torch.square(U_z0 - U_z_following_prop_intensity)
+                    #loss = loss + torch.mean(torch.abs(U_z0 - U_z_following_prop_intensity))
+                    diff_from_mean = torch.abs(U_z0 - torch.mean(U_z0))
+                    diff_normalized = diff_from_mean / (torch.max(diff_from_mean) + 1e-8)
+                    weight_mask = 1.0 + 20.0 * diff_normalized
+                    loss = loss + torch.mean(weight_mask * error_l2)
+                    loss = loss + 0.5*torch.mean(torch.square(object_preceding))
 
-            else:
-                U_z_following_prop *= phase_delay
+                else:
+                    U_z_following_prop = U_z_following_prop * phase_delay
 
-                U_z_following_prop = self.Physics_model.angular_spectrum_propagator(image=U_z_following_prop)
-        
-        loss+=weighted_loss_sparsity
+                    U_z_following_prop = checkpoint(
+                        self.Physics_model.angular_spectrum_propagator, 
+                        U_z_following_prop, 
+                        use_reentrant=False
+                    )
+        elif self.checkpoint is False : 
+            for i, z in enumerate(self.z_values):
+                object_following = volume_3d[i]
+                object_preceding = volume_3d[i+1]
+                phase_delay = full_phase_delay[i+1]
+
+                if i == 0 : 
+                    
+                    U_z_following_ref *= phase_delay
+
+                    U_z_following_prop = self.Physics_model.angular_spectrum_propagator(image=U_z_following_ref)
+
+                    loss += 0.5*torch.mean(torch.square(object_following))
+
+                elif i==len(self.z_values)-1 :
+
+                    U_z_following_prop *= phase_delay
+
+                    U_z_following_prop = self.Physics_model.angular_spectrum_propagator(image=U_z_following_prop)
+                    
+                    U_z_following_prop_intensity = torch.square(torch.abs(U_z_following_prop))
+
+                    loss += torch.mean(torch.square(U_z0 - U_z_following_prop_intensity))
+                    loss += 0.5*torch.mean(torch.square(object_preceding))
+
+                else:
+                    U_z_following_prop *= phase_delay
+
+                    U_z_following_prop = self.Physics_model.angular_spectrum_propagator(image=U_z_following_prop)
+
+        loss = loss + weighted_loss_sparsity
         return loss, weighted_loss_sparsity, volume_3d
     
     def forward_BC(self) : 
@@ -297,9 +366,21 @@ class HoloSolver(nn.Module) :
         volume_shape = (self.width, self.height, len(self.z_values))
         obj_volume = np.zeros(volume_shape, dtype=np.float32)
         
-        densities_1d = self.Nerf(self.coords_3d)
+        if self.vram_optim is True :
+            densities_1d_list = []
+            for i in range(0, self.coords_3d.shape[0], self.chunk_size):
+                chunk = self.coords_3d[i : i + self.chunk_size]
+
+                out_chunk = self.Nerf(chunk)
+
+                densities_1d_list.append(out_chunk)
+            densities_1d = torch.cat(densities_1d_list, dim=0)
+        else : 
+            densities_1d = self.Nerf(self.coords_3d)
+
 
         volume_3d = densities_1d.squeeze(-1).view(len(self.z_values)+1, self.width, self.height)
+        volume_3d = volume_3d.to(torch.float32)
 
         obj_volume = volume_3d[:-1].permute(1, 2, 0).cpu().numpy()
         
@@ -385,9 +466,21 @@ class HoloSolver(nn.Module) :
         U_z_following_ref = torch.complex(real_following_ref, self.zeros_grid)
         phase_shift_complex = torch.complex(self.phase_shift, self.scalar_zero)
 
-        densities_1d = self.Nerf(self.coords_3d)
+        if self.vram_optim is True :
+            densities_1d_list = []
+            for i in range(0, self.coords_3d.shape[0], self.chunk_size):
+                chunk = self.coords_3d[i : i + self.chunk_size]
+
+                out_chunk = self.Nerf(chunk)
+
+                densities_1d_list.append(out_chunk)
+            densities_1d = torch.cat(densities_1d_list, dim=0)
+        else : 
+            densities_1d = self.Nerf(self.coords_3d)
+
         volume_3d = densities_1d.squeeze(-1).view(len(self.z_values)+1, self.width, self.height)
-        
+        volume_3d = volume_3d.to(torch.float32)
+
         self.Physics_model.update_kernel(self.waveLength)
 
         volume_3d_complex = torch.complex(volume_3d, self.zeros_grid)
@@ -937,7 +1030,17 @@ class HoloSolver(nn.Module) :
         loss = torch.tensor(0.0, dtype=torch.float32, device=self.device)
         global_gaussian = torch.zeros(self.coords_3d.shape[0], dtype=torch.float32, device=self.device)
 
-        densities_1d = self.Nerf(self.coords_3d)
+        if self.vram_optim is True :
+            densities_1d_list = []
+            for i in range(0, self.coords_3d.shape[0], self.chunk_size):
+                chunk = self.coords_3d[i : i + self.chunk_size]
+
+                out_chunk = checkpoint(self.Nerf, chunk, use_reentrant=False)
+
+                densities_1d_list.append(out_chunk)
+            densities_1d = torch.cat(densities_1d_list, dim=0)
+        else : 
+            densities_1d = self.Nerf(self.coords_3d)
 
         for target in self.pretrain_targets :
             exponent = -0.5 * (
