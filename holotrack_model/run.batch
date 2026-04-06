@@ -1,0 +1,29 @@
+#!/bin/bash 
+
+# --- CONFIGURATION SLURM ---
+#SBATCH --job-name=holotrack
+#SBATCH --nodes=1
+#SBATCH --partition=prod40
+#SBATCH --time=24:00:00
+#SBATCH --output=logslurms/slurm-%j.out
+#SBATCH --error=logslurms/slurm-%j.err
+
+# --- 1. PRÉPARATION ---
+cd ~/Documents/2025-2026-holotrack/
+# Vérifie bien que le chemin vers ton venv est toujours bon
+source .venv/bin/activate
+
+echo "Machine : $(hostname)"
+echo "Date : $(date)"
+echo "Dossier TMPDIR : $TMPDIR"
+
+
+# --- 4. LANCEMENT ---
+echo "🚀 Lancement de l'entraînement..."
+echo "Date : $(date)"
+
+# On lance le script avec la config modifiée stockée dans TMPDIR
+python -u -m holotrack_model.src.torchholo.main ./holotrack_model/config/config.yaml train
+
+echo "Fin de l'entraînement"
+echo "Date : $(date)"

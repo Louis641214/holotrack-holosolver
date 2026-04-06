@@ -11,4 +11,5 @@ def build_model(cfg, hologram, device):
     nerf_params = cfg["nerf_params"]
     regularization_params = cfg["regularization"]
     pre_training_params = cfg["pre_training"]
-    return eval(f"{cfg['class']}(physical_params, nerf_params, regularization_params, pre_training_params, hologram, device)")
+    vram_params = cfg["vram_params"]
+    return eval(f"{cfg['class']}(physical_params, nerf_params, regularization_params, pre_training_params, vram_params, hologram, device)")

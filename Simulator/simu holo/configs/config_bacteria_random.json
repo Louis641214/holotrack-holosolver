@@ -5,7 +5,7 @@
     
     "num_objects": 5,
     
-    "holo_size_xy": 128,
+    "holo_size_xy": 512,
     "border": 256,
     "upscale_factor": 2,
     "z_size": 100,
@@ -26,7 +26,7 @@
     "noise_std_min": 0,
     "noise_std_max": 0,
     
-    "distance_volume_camera": 0.01,
+    "distance_volume_camera": 0.0,
     
     "save_options": {
         "hologram_bmp": true,

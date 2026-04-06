@@ -1,5 +1,5 @@
 data:
-  root_dir: ./Simulator/results/2026_03_19_00_19_13/simulated_hologram/holo_0.tiff
+  root_dir: ./Simulator/results/2026_04_06_01_42_55/simulated_hologram/holo_0.tiff
   blurring:
     activ: false
     blur_epochs: 2000
@@ -36,29 +36,37 @@ model:
     with_tv: false
     tv_weight: 0.0005
   physical_params:
-    phase_shift: 0.0714
-    physicalLength: 0.1375
+    phase_shift: 0.335
+    physicalLength: 0.25
     step_z: 0.5
-    waveLength: 0.66
-    z_max: 50.0
+    waveLength: 0.399
+    z_max: 30.0
   nerf_params:
     model: MorpHoloNet
     gaussian_proj: 64
-    gaussian_scale: 10
+    gaussian_scale: 5
     barf: false
     barf_epochs: 1000
+  vram_params:
+    activ: True
+    chunk_size: 15000000
+    checkpoint: True
   pre_training:
-    activ: true
+    activ: True
     epochs: 300
     targets:
-    - x0: 60.0
-      y0: 76.0
-      z0: 38.5
-      r: 3.65
-    - x0: 16.0
-      y0: 8.0
-      z0: 17.5
-      r: 4.5
+    - x0: 250.0
+      y0: 214.0
+      z0: 11.0
+      r: 5.21
+    - x0: 451.0
+      y0: 46.0
+      z0: 40.5
+      r: 6.18
+    - x0: 265.0
+      y0: 230.0
+      z0: 35.0
+      r: 4.21
 test:
   save_dir: ./Results
   weights_path: ./logs/HoloSolver_70/best_model.pt

@@ -34,7 +34,7 @@ def get_hologram(data_config):
     image_tensor = transform(image)
     image_tensor = image_tensor.squeeze(0)
     
-    logging.info("  - Return holographic image")
+    logging.info(f"  - Return holographic image of size {image_tensor.shape}")
     return image_tensor
 
 def test_dataloaders() : 

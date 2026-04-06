@@ -1,5 +1,5 @@
 data:
-  root_dir: ./holotrack_model/holograms/E_coli.tif
+  root_dir: ./Simulator/results/2026_04_06_01_53_20/simulated_hologram/holo_0.tiff
   blurring:
     activ: false
     blur_epochs: 2000
@@ -36,29 +36,41 @@ model:
     with_tv: false
     tv_weight: 0.0005
   physical_params:
-    phase_shift: 0.335
-    physicalLength: 0.25
+    phase_shift: 0.0714
+    physicalLength: 0.1375
     step_z: 0.5
-    waveLength: 0.399
-    z_max: 30.0
+    waveLength: 0.66
+    z_max: 50.0
   nerf_params:
     model: MorpHoloNet
     gaussian_proj: 64
-    gaussian_scale: 5
+    gaussian_scale: 10
     barf: false
     barf_epochs: 1000
   vram_params:
-    activ: False
-    chunk_size: 10000000
-    checkpoint: False
+    activ: true
+    chunk_size: 15000000
+    checkpoint: true
   pre_training:
-    activ: True
+    activ: true
     epochs: 300
     targets:
-    - x0: 64.0
-      y0: 64.0
-      z0: 11.5
-      r: 3.0
+    - x0: 498.0
+      y0: 152.0
+      z0: 16.5
+      r: 6.76
+    - x0: 313.0
+      y0: 475.0
+      z0: 5.0
+      r: 6.3
+    - x0: 255.0
+      y0: 503.0
+      z0: 37.5
+      r: 6.67
+    - x0: 404.0
+      y0: 241.0
+      z0: 38.5
+      r: 4.32
 test:
   save_dir: ./Results
   weights_path: ./logs/HoloSolver_70/best_model.pt
