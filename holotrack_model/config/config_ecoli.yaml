@@ -52,7 +52,7 @@ model:
     chunk_size: 10000000
     checkpoint: False
   pre_training:
-    activ: True
+    activ: False
     epochs: 1500
     targets:
     - x0: 64.0

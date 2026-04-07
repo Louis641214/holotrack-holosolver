@@ -53,7 +53,7 @@ model:
     checkpoint: False
   pre_training:
     activ: True
-    epochs: 300
+    epochs: 1500
     targets:
     - x0: 64.0
       y0: 64.0

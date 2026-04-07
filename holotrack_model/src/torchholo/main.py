@@ -269,11 +269,19 @@ def train(config):
                     break
 
         #----------Save Model weights----------
-        if (e>model_config["pre_training"]["epochs"] and e%200==0) or (e==model_config["pre_training"]["epochs"]):
+        if model_config["pre_training"]["activ"] is True :
+            if (e>model_config["pre_training"]["epochs"] and e%200==0) or (e==model_config["pre_training"]["epochs"]):
+                model_checkpoint.update(total_loss)
+                logging.info("=Generation of volume")
+                test_config = config["test"]
+                utils.test(model, save_dir, e)
+        elif e>500 and e%200==0 :
             model_checkpoint.update(total_loss)
             logging.info("=Generation of volume")
             test_config = config["test"]
             utils.test(model, save_dir, e)
+
+        
 
     #---------End training resume----------
     phase_shift, incident_light = model.get_internal_values()
