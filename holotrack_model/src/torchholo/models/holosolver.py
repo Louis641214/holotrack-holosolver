@@ -1011,11 +1011,14 @@ class HoloSolver(nn.Module) :
             z0 = target["z0"] / self.z_max
             r = target["r"]
 
-            #Var formulas for ellipsoid
             var_x = (r / self.width) ** 2
             var_y = (r / self.height) ** 2
-            var_z = ((0.5 * r * self.physicalLength) / self.z_max) ** 2
-
+            #Var formulas for ellipsoid
+            #var_z = ((0.5 * r * self.physicalLength) / self.z_max) ** 2
+            #Var formulas for sphere
+            #var_z = ((r * self.physicalLength) / self.z_max) ** 2
+            #Var formulas for thin ellipsoid
+            var_z = ((0.25 * r) / self.z_max) ** 2
             self.pretrain_targets.append({"x0" : x0, 
                                           "y0" : y0, 
                                           "z0" : z0, 
@@ -1056,8 +1059,9 @@ class HoloSolver(nn.Module) :
 
         global_gaussian = global_gaussian.unsqueeze(-1)
         
-        weights = 1.0 + 100.0 * global_gaussian
-        loss += torch.mean(weights * torch.square(densities_1d - global_gaussian))
+        #weights = 1.0 + 100.0 * global_gaussian
+        #loss += torch.mean(weights * torch.square(densities_1d - global_gaussian))
+        loss += torch.mean(torch.square(densities_1d - global_gaussian))
 
         return loss
         

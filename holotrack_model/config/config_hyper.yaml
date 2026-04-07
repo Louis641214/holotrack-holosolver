@@ -1,5 +1,5 @@
 data:
-  root_dir: ./holotrack_model/holograms/Isotonic_RBC.tif
+  root_dir: ./holotrack_model/holograms/Hypertonic_RBC.tif
   blurring:
     activ: false
     blur_epochs: 2000
@@ -36,15 +36,15 @@ model:
     with_tv: false
     tv_weight: 0.0005
   physical_params:
-    phase_shift: 0.661
+    phase_shift: 0.626
     physicalLength: 0.5
     step_z: 1.0
-    waveLength: 0.396
-    z_max: 140.0
+    waveLength: 0.395
+    z_max: 100.0
   nerf_params:
     model: MorpHoloNet
     gaussian_proj: 64
-    gaussian_scale: 7.0
+    gaussian_scale: 8.0
     barf: false
     barf_epochs: 1000
   vram_params:
@@ -53,11 +53,11 @@ model:
     checkpoint: False
   pre_training:
     activ: True
-    epochs: 1500
+    epochs: 300
     targets:
     - x0: 64.0
       y0: 64.0
-      z0: 136.0
+      z0: 67.0
       r: 3.0
 test:
   save_dir: ./Results

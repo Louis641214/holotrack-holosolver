@@ -44,7 +44,7 @@ model:
   nerf_params:
     model: MorpHoloNet
     gaussian_proj: 64
-    gaussian_scale: 5
+    gaussian_scale: 5.0
     barf: false
     barf_epochs: 1000
   vram_params:
@@ -53,7 +53,7 @@ model:
     checkpoint: False
   pre_training:
     activ: True
-    epochs: 300
+    epochs: 1500
     targets:
     - x0: 64.0
       y0: 64.0

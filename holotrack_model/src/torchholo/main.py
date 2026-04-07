@@ -188,6 +188,18 @@ def train(config):
 
         #------------TRAIN call--------------  
 
+        if model_config["pre_training"]["activ"] is True and e == model_config["pre_training"]["epochs"] + 1:
+            logging.info("= 🔄 Reset Adam and adjusting Lrs!")
+            
+            optimizer.state.clear()
+            
+            new_lr_nerf = 0.0001
+            new_lr_physics = 0.0001
+            
+            optimizer.param_groups[0]["lr"] = new_lr_nerf       
+            optimizer.param_groups[1]["lr"] = new_lr_physics    
+
+
         loss_physics, loss_bc, weighted_loss_sparsity, weighted_loss_tv, total_loss, loss_pre_training, volume_3d, total_norm = utils.train(model, U_z0, optimizer, e, use_dtype, scaler)
 
         #-----------Parameters-Norm------------
@@ -257,7 +269,7 @@ def train(config):
                     break
 
         #----------Save Model weights----------
-        if (e>300 and e%200==0) or (e==model_config["pre_training"]["epochs"]):
+        if (e>model_config["pre_training"]["epochs"] and e%200==0) or (e==model_config["pre_training"]["epochs"]):
             model_checkpoint.update(total_loss)
             logging.info("=Generation of volume")
             test_config = config["test"]
