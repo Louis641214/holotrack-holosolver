@@ -1014,11 +1014,11 @@ class HoloSolver(nn.Module) :
             var_x = (r / self.width) ** 2
             var_y = (r / self.height) ** 2
             #Var formulas for ellipsoid
-            #var_z = ((0.5 * r * self.physicalLength) / self.z_max) ** 2
+            var_z = ((0.5 * r) / self.z_max) ** 2
             #Var formulas for sphere
-            #var_z = ((r * self.physicalLength) / self.z_max) ** 2
+            #var_z = ((r) / self.z_max) ** 2
             #Var formulas for thin ellipsoid
-            var_z = ((0.25 * r) / self.z_max) ** 2
+            #var_z = ((0.25 * r) / self.z_max) ** 2
             self.pretrain_targets.append({"x0" : x0, 
                                           "y0" : y0, 
                                           "z0" : z0, 
