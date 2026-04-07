@@ -1,5 +1,5 @@
 data:
-  root_dir: ./holotrack_model/holograms/Hypotonic_RBC.tif
+  root_dir: ./holotrack_model/holograms/E_coli.tif
   blurring:
     activ: false
     blur_epochs: 2000
@@ -36,15 +36,15 @@ model:
     with_tv: false
     tv_weight: 0.0005
   physical_params:
-    phase_shift: 0.437
-    physicalLength: 0.5
-    step_z: 1.0
+    phase_shift: 0.335
+    physicalLength: 0.25
+    step_z: 0.5
     waveLength: 0.399
-    z_max: 100.0
+    z_max: 30.0
   nerf_params:
     model: MorpHoloNet
     gaussian_proj: 64
-    gaussian_scale: 8.0
+    gaussian_scale: 5.0
     barf: false
     barf_epochs: 1000
   vram_params:
@@ -52,12 +52,12 @@ model:
     chunk_size: 10000000
     checkpoint: False
   pre_training:
-    activ: True
-    epochs: 300
+    activ: False
+    epochs: 1500
     targets:
     - x0: 64.0
       y0: 64.0
-      z0: 44.0
+      z0: 11.5
       r: 3.0
 test:
   save_dir: ./Results

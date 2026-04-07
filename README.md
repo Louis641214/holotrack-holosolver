@@ -1,5 +1,30 @@
 # Holotrack
 
+### 0. Informations
+
+## Présentation
+
+**Holotrack** est un projet étudiant développé par **Erwan Gouriou** et **Louis Bonnecaze**, étudiants à CentraleSupélec, dans le cadre de leur projet de fin d’études (SDI-Metz 2025-2026).
+
+L’objectif du projet est la **reconstruction et la localisation 3D de bactéries à partir d’hologrammes**.
+
+---
+
+## Architecture du projet
+
+Le projet repose sur une structure modulaire :
+
+- **Holosolver** : modèle 
+- **Simulator** : générateur d’hologrammes synthétiques
+- **Visualizer** : outil de visualisation des résultats
+
+### 🔧 Technologies utilisées
+
+- Python 3.12+
+
+---
+
+
 ### 1. Installation du projet
 
 Exécutez les commandes suivantes :
@@ -16,6 +41,7 @@ source .venv/bin/activate
 # Installer les dépendances
 uv pip install -e .
 ```
+
 
 ### 2. Simulateur
 
