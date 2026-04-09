@@ -1,11 +1,5 @@
 data:
-  root_dir: ./Simulator/results/2026_04_06_01_42_55/simulated_hologram/holo_0.tiff
-  blurring:
-    activ: false
-    blur_epochs: 2000
-    max_sigma: 1.0
-    min_sigma: 0.1
-    kernel_size: 9
+  root_dir: ./Simulator/results/2026_04_08_14_23_16/simulated_hologram/holo_0.tiff
 optim:
   algo: Adam
   params:
@@ -15,17 +9,6 @@ optim:
     - 0.9
     - 0.95
   lr_physics: 0.005
-  scheduler:
-    activ: false
-    milestones:
-    - 3000
-    gamma: 0.1
-    warm_start: false
-  stop_criteria:
-    activ: false
-    patience: 3
-    interval: 200
-    delta: 0.0001
 nepochs: 20000
 model:
   class: HoloSolver
@@ -36,37 +19,31 @@ model:
     with_tv: false
     tv_weight: 0.0005
   physical_params:
-    phase_shift: 0.335
-    physicalLength: 0.25
+    phase_shift: 0.0714
+    physicalLength: 0.1375
     step_z: 0.5
-    waveLength: 0.399
-    z_max: 30.0
+    waveLength: 0.66
+    z_max: 50.0
   nerf_params:
     model: MorpHoloNet
     gaussian_proj: 64
     gaussian_scale: 10
-    barf: false
-    barf_epochs: 1000
   vram_params:
-    activ: True
+    activ: false
     chunk_size: 15000000
-    checkpoint: True
+    checkpoint: false
   pre_training:
-    activ: True
+    activ: true
     epochs: 1500
     targets:
-    - x0: 250.0
-      y0: 214.0
-      z0: 11.0
-      r: 5.21
-    - x0: 451.0
-      y0: 46.0
-      z0: 40.5
-      r: 6.18
-    - x0: 265.0
-      y0: 230.0
-      z0: 35.0
-      r: 4.21
+    - x0: 111.0
+      y0: 97.0
+      z0: 43.5
+      r: 6.74
+    - x0: 60.0
+      y0: 55.0
+      z0: 13.5
+      r: 6.74
 test:
   save_dir: ./Results
   weights_path: ./logs/HoloSolver_70/best_model.pt

@@ -6,6 +6,8 @@ from PIL import Image
 import sys
 import napari
 from scipy import ndimage
+from scipy.spatial import distance_matrix
+from scipy.optimize import linear_sum_assignment
 import pandas as pd
 
 
@@ -18,7 +20,7 @@ data = (data - np.min(data)) / (np.max(data) - np.min(data) + 1e-8)
 parent_dir = os.path.dirname(directory.rstrip('/'))
 csv = os.path.join(parent_dir, "bacteria_0.csv")
 
-def extract_bacteria_positions(volume_3d, threshold=0.5, 
+def extract_bacteria_positions(volume_3d, threshold=0.50, 
                                pix_size=5.5, magnification=40.0, step_z=0.5):
     """
     Extrait les positions (en voxels et en mètres) de plusieurs bactéries 
@@ -73,13 +75,11 @@ def extract_bacteria_positions(volume_3d, threshold=0.5,
             'max_density': max_density
         })
         
-    return pd.DataFrame(results), labeled_volume
+    return pd.DataFrame(results), labeled_volume, vox_size_z 
 
 
-predicted_position, labeled_volume = extract_bacteria_positions(
-    data, 
-    threshold=0.5  # Ajuste ce seuil selon tes observations
-)
+predicted_position, labeled_volume, vox_size_z = extract_bacteria_positions(
+    data)
 
 def extract_bacteria_true_positions(csv) :
     true_position = pd.read_csv(csv)
@@ -88,19 +88,132 @@ def extract_bacteria_true_positions(csv) :
     return true_position
 
 true_position = extract_bacteria_true_positions(csv)
+
 print(true_position)
 print("\nPositions réelles :")
 print(true_position[['bacterium_id', 'x_voxel', 'y_voxel', 'z_voxel']])
 print("\nPositions prédites :")
 print(predicted_position[['bacterium_id', 'x_voxel', 'y_voxel', 'z_voxel']])
-print("\nDelta :")
-error_df = np.abs(true_position[['x_voxel', 'y_voxel', 'z_voxel']] - predicted_position[['x_voxel', 'y_voxel', 'z_voxel']])
-error_df.insert(0, "bacterium_id", predicted_position["bacterium_id"])
+
+# =====================================================================
+# MATCHING DES BACTÉRIES
+# =====================================================================
+
+# 1. On extrait les coordonnées sous forme de matrices Numpy
+coords_true = true_position[['x_voxel', 'y_voxel', 'z_voxel']].values
+coords_pred = predicted_position[['x_voxel', 'y_voxel', 'z_voxel']].values
+
+# 2. On calcule la matrice des distances (chaque vrai point vers chaque point prédit)
+cost_matrix = distance_matrix(coords_true, coords_pred)
+
+# 3. L'algorithme trouve la meilleure association 1-pour-1
+row_ind, col_ind = linear_sum_assignment(cost_matrix)
+
+# row_ind contient les indices des vraies bactéries (CSV)
+# col_ind contient les indices des bactéries prédites correspondantes (SciPy)
+
+# 4. On réorganise les DataFrames pour qu'ils soient alignés
+matched_true = true_position.iloc[row_ind].copy().reset_index(drop=True)
+matched_pred = predicted_position.iloc[col_ind].copy().reset_index(drop=True)
+
+print("\n--- RÉSULTAT DU MATCHING ---")
+for i in range(len(matched_true)):
+    id_vrai = matched_true.loc[i, 'bacterium_id']
+    id_pred = matched_pred.loc[i, 'bacterium_id']
+    dist = cost_matrix[row_ind[i], col_ind[i]]
+    print(f"Vraie Bactérie {id_vrai} <--> Prédite Bactérie {id_pred} (Distance: {dist:.2f} voxels)")
+
+# =====================================================================
+# CALCUL DU DELTA
+# =====================================================================
+
+print("\nDelta final (Erreur absolue) :")
+error_df = np.abs(matched_true[['x_voxel', 'y_voxel', 'z_voxel']] - matched_pred[['x_voxel', 'y_voxel', 'z_voxel']])
+
+# On ajoute les IDs pour que ce soit clair à la lecture
+error_df.insert(0, "matched_true_id", matched_true["bacterium_id"])
+error_df.insert(1, "matched_pred_id", matched_pred["bacterium_id"])
+
 print(error_df)
+
+# Pour Napari, on garde les dataframes originaux, mais on pourrait très bien
+# utiliser les IDs 'matched_pred_id' si tu veux que les labels collent !
+
+# =====================================================================
+# SYNCHRONISATION DES LABELS POUR NAPARI
+# =====================================================================
+
+# 1. On crée un dictionnaire de traduction : {SciPy_ID : True_ID}
+mapping_dict = dict(zip(matched_pred['bacterium_id'], matched_true['bacterium_id']))
+
+# 2. On applique ce dictionnaire à toutes nos prédictions
+# Si une prédiction n'a pas de correspondance (Faux Positif), on affiche "FP" ou son ID de base
+predicted_position['display_id'] = predicted_position['bacterium_id'].map(mapping_dict)
+
+# On remplace les NaN (les non-matchés) par un texte clair
+predicted_position['display_id'] = predicted_position['display_id'].fillna('Erreur/FP')
+
+# Pour avoir des entiers propres sur les matchés (ex: "1" au lieu de "1.0")
+predicted_position['display_id'] = predicted_position['display_id'].apply(
+    lambda x: str(int(x)) if isinstance(x, float) and not np.isnan(x) else str(x)
+)
+
+
 '''
-------------------------------------------------------------
-VISUALIZER 1 : 2D Visualization of each layer of holograms
-------------------------------------------------------------
+----------------------------------------------
+VISUALIZER : 3D Visualization using NAPARI
+----------------------------------------------
+'''
+
+viewer=napari.view_image(data, rendering="iso", name="Bacteries", blending="translucent_no_depth", contrast_limits=[0.0, 1.0])
+viewer.dims.ndisplay = 3
+viewer.axes.visible = True
+viewer.axes.colored = True
+viewer.axes.dashed = False
+viewer.dims.axis_labels = ['X', 'Y', 'Z']
+viewer.layers["Bacteries"].bounding_box.visible = True
+viewer.add_labels(labeled_volume, name="Bactéries Isolées (Labeling)", blending="translucent_no_depth")
+viewer.add_points(
+    np.array(predicted_position[['x_voxel', 'y_voxel', 'z_voxel']]), 
+    size=5, 
+    name="predicted_position", 
+    face_color="red", 
+    symbol="cross", 
+    blending="translucent_no_depth", 
+    # --- CHANGEMENT ICI : On utilise la nouvelle colonne ---
+    features={'id' : predicted_position["display_id"]}, 
+    # -------------------------------------------------------
+    text={
+          'string': 'ID: {id}',     
+          'size': 10,               
+          'color': 'white',         
+          'translation': [-10, 0, 0] 
+      }
+)
+viewer.add_points(np.array(true_position[['x_voxel', 'y_voxel', 'z_voxel']]), size=5, name="true_position", face_color="green", symbol="cross", blending="translucent_no_depth")
+"""
+viewer.add_vectors(
+    vecteurs_napari,
+    edge_width=2,         
+    edge_color='yellow',  
+    name='Orientation (Ground Truth)',
+    blending='translucent'
+)
+"""
+
+napari.run()
+
+
+
+
+#-------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+#NOTE: Others visualizers we used during the implementation :
+
+'''
+-------------------------------------------------------------------------------------
+VISUALIZER 1 : 2D Visualization of each layer of holograms (Reconstructed Holograms)
+--------------------------------------------------------------------------------------
 '''
 """
 intensity_dir = directory + '/intensity/'
@@ -147,9 +260,9 @@ plt.show()
 """
 
 '''
-------------------------------------------------------------
-VISUALIZER 2 : 2D Visualization of each layer of the object
-------------------------------------------------------------
+-----------------------------------------------------------------------
+VISUALIZER 2 : 2D Visualization of each layer of the object (Heat Map)
+-----------------------------------------------------------------------
 '''
 
 """
@@ -178,72 +291,3 @@ slider.on_changed(update)
 
 plt.show()
 """
-
-'''
-----------------------------------------------
-VISUALIZER 3 : 3D Visualization using NAPARI
-----------------------------------------------
-'''
-"""
-longueur_fleche = 10 
-
-# 2. On prépare le tableau vide pour Napari (N, 2, 3)
-N_bacteries = len(true_position)
-vecteurs_napari = np.zeros((N_bacteries, 2, 3))
-
-for i in range(N_bacteries):
-    x_c = true_position.iloc[i]['x_voxel']
-    y_c = true_position.iloc[i]['y_voxel']
-    z_c = true_position.iloc[i]['z_voxel']
-    
-    # Simon Becker utilise : 
-    # angle1 (theta) pour la rotation dans le plan XY
-    # angle2 (phi) pour l'inclinaison par rapport à Z
-    # (D'après ses lignes 150-153)
-    t_rad = np.radians(true_position.iloc[i]['theta_angle'])
-    p_rad = np.radians(true_position.iloc[i]['phi_angle'])
-    
-    # --- CALCUL DIRECT ISSU DU CODE SOURCE ---
-    # On suit strictement ses m2_x, m2_y, m2_z (lignes 155-157)
-    # Le vecteur directionnel est (m2 - centre)
-    dx = longueur_fleche * np.sin(p_rad) * np.cos(t_rad)
-    dy = longueur_fleche * np.sin(p_rad) * np.sin(t_rad)
-    dz = longueur_fleche * np.cos(p_rad)
-    
-    # On centre la flèche sur le point vert (True)
-    # Origine = Centre - demi_vecteur, Direction = vecteur complet
-    vecteurs_napari[i, 0, :] = [x_c - dx/2, y_c - dy/2, z_c - dz/2]
-    vecteurs_napari[i, 1, :] = [dx, dy, dz]
-# 3. On ajoute le calque des vecteurs à Napari
-"""
-viewer=napari.view_image(data, rendering="iso", name="Bacteries", blending="translucent_no_depth")
-viewer.dims.ndisplay = 3
-viewer.axes.visible = True
-viewer.axes.colored = True
-viewer.axes.dashed = False
-viewer.dims.axis_labels = ['X', 'Y', 'Z']
-viewer.layers["Bacteries"].bounding_box.visible = True
-viewer.add_labels(labeled_volume, name="Bactéries Isolées (Labeling)", blending="translucent_no_depth")
-viewer.add_points(np.array(predicted_position.iloc[:, 1:4]), size=5, name="predicted_position", face_color="red", 
-                  symbol="cross", blending="translucent_no_depth", features={'id' : predicted_position["bacterium_id"]}, 
-                  text={
-                        'string': 'ID: {id}',     # On appelle la feature 'id'
-                        'size': 10,               # Taille de la police
-                        'color': 'white',         # Couleur du texte
-                        'translation': [-10, 0, 0] # On décale le texte un peu plus haut en Z pour ne pas cacher la croix
-                    })
-viewer.add_points(np.array(true_position[['x_voxel', 'y_voxel', 'z_voxel']]), size=5, name="true_position", face_color="green", symbol="cross", blending="translucent_no_depth")
-"""
-viewer.add_vectors(
-    vecteurs_napari,
-    edge_width=2,         
-    edge_color='yellow',  
-    name='Orientation (Ground Truth)',
-    blending='translucent'
-)
-"""
-
-napari.run()
-
-
-

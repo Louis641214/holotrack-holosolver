@@ -6,7 +6,6 @@ import os
 # External imports
 import torch
 import torch.nn
-import shutil
 import os
 
 

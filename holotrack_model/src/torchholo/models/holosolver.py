@@ -10,7 +10,6 @@ from torch.utils.checkpoint import checkpoint
 from .morpholonet import MorpHoloNet
 from .physics_model import PhysicsModel
 from .hash_grid import Hash_Grid
-from .holotrack import HoloTrack
 from .deep_morpholonet import Deep_MorpHoloNet
 
 class HoloSolver(nn.Module) :
@@ -26,9 +25,6 @@ class HoloSolver(nn.Module) :
             self.hash = True
         elif nerf_params["model"] == "MorpHoloNet" : 
             self.Nerf = MorpHoloNet(nerf_params)
-            self.hash = False
-        elif nerf_params["model"] == "HoloTrack" : 
-            self.Nerf = HoloTrack(nerf_params)
             self.hash = False
         elif nerf_params["model"] == "Deep_MorpHoloNet" : 
             self.Nerf = Deep_MorpHoloNet(nerf_params)
@@ -52,13 +48,12 @@ class HoloSolver(nn.Module) :
         self.U_incident_avg_real = torch.sqrt(torch.mean(U_z0)).item()
 
         self.Physics_model = PhysicsModel(self.segment_size, self.physicalLength, self.dz, device)
+
         # ==============================================================================
         # PARAMETERS 2 : Lernable parameters
         # ==============================================================================
         self.phase_shift = nn.Parameter(torch.tensor(physical_params["phase_shift"], dtype=torch.float32))
         self.incident_light = nn.Parameter(torch.tensor(self.U_incident_avg_real, dtype=torch.float32))
-        #self.register_buffer("phase_shift", torch.tensor(physical_params["phase_shift"], dtype=torch.float32))
-        #elf.register_buffer("incident_light", torch.tensor(self.U_incident_avg_real, dtype=torch.float32))
         
         # ==============================================================================
         # OPTIMISATION : init BUFFERS for forward_physics and forward_BC
@@ -84,6 +79,10 @@ class HoloSolver(nn.Module) :
         self.with_tv = regularization_params.get("with_tv", False)
         self.tv_weight = regularization_params.get("tv_weight", 0.0)
         self.with_bc = regularization_params.get("with_bc", False)
+
+    # ==============================================================================
+    # PART 1 : HoloSolver with Positional Encoding (Working)
+    # ============================================================================== 
 
     def _init_physics_buffer(self) :
         '''
@@ -142,47 +141,13 @@ class HoloSolver(nn.Module) :
         tensor_array_BC_all = torch.cat([tensor0, tensor1, tensor2, tensor3], dim=0)
         self.register_buffer('tensor_array_BC_all', tensor_array_BC_all)
 
-    def _init_bc_buffer_hash(self) :
-        """
-        Init all elements that will be used by Forward_BC in order
-        to optimize time during training
-
-        The difference with forward_physics is that all coordinate values are 
-        normalize with the maximum value between x_max, y_max and z_max.
-
-        This is a requierment to use hash encoding.
-        """
-
-        self.z_norm = self._normalize_z_for_nerf(self.z_values)
-
-        x_min = self.x_norm[0].item()
-        x_max = self.x_norm[-1].item()
-
-        y_min = self.y_norm[0].item()
-        y_max = self.y_norm[-1].item()
-
-        xx_BC, zz_BC = torch.meshgrid(self.x_norm, self.z_norm, indexing='xy')
-        yy_0 = torch.full_like(xx_BC, y_min)
-        yy_1 = torch.full_like(xx_BC, y_max)
-
-        self.register_buffer('tensor_array_BC_0', torch.stack([xx_BC, yy_0, zz_BC], dim=-1).reshape(-1, 3))
-        self.register_buffer('tensor_array_BC_1', torch.stack([xx_BC, yy_1, zz_BC], dim=-1).reshape(-1, 3))
-
-        yy_BC, zz_BC = torch.meshgrid(self.y_norm, self.z_norm, indexing='xy')
-        xx_0 = torch.full_like(yy_BC, x_min)
-        xx_1 = torch.full_like(yy_BC, x_max)
-
-        self.register_buffer('tensor_array_BC_2',torch.stack([xx_0, yy_BC, zz_BC], dim=-1).reshape(-1, 3))
-        self.register_buffer('tensor_array_BC_3',torch.stack([xx_1, yy_BC, zz_BC], dim=-1).reshape(-1, 3))
-    
     def forward_physics(self, U_z0):
         """
         Call nerf and physics model to predict
         object at each coordinate and simulate 
         light propagation.
 
-        Can be used only with positional_encoding and 
-        positional_encoding_barf
+        Can be used only with positional_encoding
 
         U_z0 : Target hologram to reconstruct
         """
@@ -221,14 +186,7 @@ class HoloSolver(nn.Module) :
         
         
         if self.with_sparsity:
-            """
-            # --- FREE SPACE PRIOR (Optimize the Unseen, NeurIPS 2025) ---
-            flat_volume = volume_3d.view(-1)
-            N_samples = flat_volume.numel() // 10
-            random_indices = torch.randint(0, flat_volume.numel(), (N_samples,), device=self.device)
-            sampled_densities = flat_volume[random_indices]
-            loss_sparsity = torch.mean(torch.square(torch.sigmoid(sampled_densities * 50.0)))
-            """
+
             # --- RAY ENTROPY LOSS (Compression sur l'axe Z) ---
             eps = 1e-8
             # 1. On s'assure que les valeurs sont positives
@@ -248,10 +206,7 @@ class HoloSolver(nn.Module) :
             # 5. On somme l'entropie sur l'axe Z pour chaque rayon, puis on fait la moyenne globale
             ray_entropy = torch.sum(entropy, dim=0)
             loss_sparsity = torch.mean(ray_entropy)
-        # --------------------------------------------------
-            # ----------------------------------------------------------------
 
-            
         weighted_loss_sparsity = self.sparsity_weight * loss_sparsity
         
         if self.checkpoint is True :
@@ -300,6 +255,7 @@ class HoloSolver(nn.Module) :
                         U_z_following_prop, 
                         use_reentrant=False
                     )
+
         elif self.checkpoint is False : 
             for i, z in enumerate(self.z_values):
                 object_following = volume_3d[i]
@@ -347,7 +303,7 @@ class HoloSolver(nn.Module) :
     def generate_output(self, save_dir) :
         """
         Generate files useful for visualization of 
-        positional encoding and positional encoding barf based models.
+        positional encoding based models.
 
         save_dir : directory to save files.
         """
@@ -387,6 +343,8 @@ class HoloSolver(nn.Module) :
         np.save(os.path.join(obj_dir, "volume_3d.npy"), obj_volume)
 
         """
+        NOTE: This part has to be add if you want to generate holograms for each layer z
+
         # ======================================================================
         # PARTIE 2 : Propagation Physique (Backward Propagation)
         # ======================================================================
@@ -456,8 +414,7 @@ class HoloSolver(nn.Module) :
     def reconstruct_hologram(self) :
         """
         Generate reconstruct hologram of
-        positional encoding and positional encoding barf 
-        based models.
+        positional encoding based models.
         """
 
         complex_i = torch.complex(self.scalar_zero, self.scalar_one)
@@ -511,13 +468,110 @@ class HoloSolver(nn.Module) :
         
         return torch.square(torch.abs(U_0_following_prop))
 
-    '''
-    NOTE :
-    Pour l'instant on suppose que l'application de bundary conditions est obligatoire
-    Ainsi on ne met pas d'autres régularisation pour z_max et z_min
-    Pour l'étude de bactéries proche des bords il sera peut être interessant de enlever le BC et 
-    de le remplacer par les autres régularisations 
-    '''
+    # ==============================================================================
+    # PART 2 : HoloSolver with Hash Encoding (Not Maintained)
+    # ============================================================================== 
+    
+    def _init_physics_buffer_hash(self) :
+        '''
+        NOTE: This method is not maintained.
+
+        Init all elements that will be used by forward_physics_hash in order
+        to optimize time during training.
+
+        The difference with forward_physics is that all coordinate values are 
+        normalize with the maximum value between x_max, y_max and z_max.
+
+        This is a requierment to use hash encoding.
+        ''' 
+
+        self.padding = 0.05
+        self.scale = 1 - 2 * self.padding
+
+        span_x = float(self.width)
+        span_y = float(self.height)
+        span_z = float(self.z_max-self.z_min)
+
+        self.max_span = max(span_x, span_y, span_z)
+
+        offset_x = (1.0 -(span_x/self.max_span))/2.0
+        offset_y = (1.0 -(span_y/self.max_span))/2.0
+        self.offset_z = (1.0 -(span_z/self.max_span))/2.0
+
+        x_raw = torch.arange(0, self.width, dtype=torch.float32)
+        y_raw = torch.arange(0, self.height, dtype=torch.float32)
+
+        self.x_norm = ((x_raw/self.max_span) + offset_x) * self.scale + self.padding
+        self.y_norm = ((y_raw/self.max_span) + offset_y) * self.scale + self.padding
+
+        xx_norm, yy_norm = torch.meshgrid(self.x_norm, self.y_norm, indexing='xy')
+        self.register_buffer('xx', torch.clamp(xx_norm, 0.0, 1.0 - 1e-5))
+        self.register_buffer('yy', torch.clamp(yy_norm, 0.0, 1.0 - 1e-5))
+        
+        z_values = torch.arange(self.z_min, self.z_max + (self.dz/100), step=self.dz, dtype=torch.float32).flip(-1)
+        self.register_buffer('z_values', z_values)
+        
+        ones_grid = torch.ones((self.width, self.height), dtype=torch.float32)
+        zeros_grid = torch.zeros((self.width, self.height), dtype=torch.float32)
+        self.register_buffer('ones_grid', ones_grid)
+        self.register_buffer('zeros_grid', zeros_grid)
+
+        scalar_zero = torch.tensor(0.0, dtype=torch.float32)
+        scalar_one = torch.tensor(1.0, dtype=torch.float32)
+        self.register_buffer('scalar_zero', scalar_zero)
+        self.register_buffer('scalar_one', scalar_one)
+    
+    def _normalize_z_for_nerf(self, z_phys) : 
+
+        """
+        NOTE: This method is not maintained.
+
+        This method is used for hash encoding based methods
+        Return the value of z normalized with the maximum
+        value in x, y and z with padding.
+
+        z_phys : value of int z plane
+        """
+        z_norm = (z_phys - self.z_min) / self.max_span
+        z_centered = z_norm + self.offset_z
+        z_final = z_centered * self.scale + self.padding
+        return torch.clamp(z_final, 0.0, 1.0 - 1e-5)
+    
+    def _init_bc_buffer_hash(self) :
+        """
+        NOTE: This method is not maintained.
+
+        Init all elements that will be used by Forward_BC in order
+        to optimize time during training
+
+        The difference with forward_physics is that all coordinate values are 
+        normalize with the maximum value between x_max, y_max and z_max.
+
+        This is a requierment to use hash encoding.
+        """
+
+        self.z_norm = self._normalize_z_for_nerf(self.z_values)
+
+        x_min = self.x_norm[0].item()
+        x_max = self.x_norm[-1].item()
+
+        y_min = self.y_norm[0].item()
+        y_max = self.y_norm[-1].item()
+
+        xx_BC, zz_BC = torch.meshgrid(self.x_norm, self.z_norm, indexing='xy')
+        yy_0 = torch.full_like(xx_BC, y_min)
+        yy_1 = torch.full_like(xx_BC, y_max)
+
+        self.register_buffer('tensor_array_BC_0', torch.stack([xx_BC, yy_0, zz_BC], dim=-1).reshape(-1, 3))
+        self.register_buffer('tensor_array_BC_1', torch.stack([xx_BC, yy_1, zz_BC], dim=-1).reshape(-1, 3))
+
+        yy_BC, zz_BC = torch.meshgrid(self.y_norm, self.z_norm, indexing='xy')
+        xx_0 = torch.full_like(yy_BC, x_min)
+        xx_1 = torch.full_like(yy_BC, x_max)
+
+        self.register_buffer('tensor_array_BC_2',torch.stack([xx_0, yy_BC, zz_BC], dim=-1).reshape(-1, 3))
+        self.register_buffer('tensor_array_BC_3',torch.stack([xx_1, yy_BC, zz_BC], dim=-1).reshape(-1, 3))
+    
     def forward_physics_hash(self, U_z0):
 
         """
@@ -640,67 +694,6 @@ class HoloSolver(nn.Module) :
         
         return loss, weighted_loss_sparsity, weighted_loss_tv, loss_bc
     
-    def _init_physics_buffer_hash(self) :
-        '''
-        Init all elements that will be used by forward_physics_hash in order
-        to optimize time during training.
-
-        The difference with forward_physics is that all coordinate values are 
-        normalize with the maximum value between x_max, y_max and z_max.
-
-        This is a requierment to use hash encoding.
-        ''' 
-
-        self.padding = 0.05
-        self.scale = 1 - 2 * self.padding
-
-        span_x = float(self.width)
-        span_y = float(self.height)
-        span_z = float(self.z_max-self.z_min)
-
-        self.max_span = max(span_x, span_y, span_z)
-
-        offset_x = (1.0 -(span_x/self.max_span))/2.0
-        offset_y = (1.0 -(span_y/self.max_span))/2.0
-        self.offset_z = (1.0 -(span_z/self.max_span))/2.0
-
-        x_raw = torch.arange(0, self.width, dtype=torch.float32)
-        y_raw = torch.arange(0, self.height, dtype=torch.float32)
-
-        self.x_norm = ((x_raw/self.max_span) + offset_x) * self.scale + self.padding
-        self.y_norm = ((y_raw/self.max_span) + offset_y) * self.scale + self.padding
-
-        xx_norm, yy_norm = torch.meshgrid(self.x_norm, self.y_norm, indexing='xy')
-        self.register_buffer('xx', torch.clamp(xx_norm, 0.0, 1.0 - 1e-5))
-        self.register_buffer('yy', torch.clamp(yy_norm, 0.0, 1.0 - 1e-5))
-        
-        z_values = torch.arange(self.z_min, self.z_max + (self.dz/100), step=self.dz, dtype=torch.float32).flip(-1)
-        self.register_buffer('z_values', z_values)
-        
-        ones_grid = torch.ones((self.width, self.height), dtype=torch.float32)
-        zeros_grid = torch.zeros((self.width, self.height), dtype=torch.float32)
-        self.register_buffer('ones_grid', ones_grid)
-        self.register_buffer('zeros_grid', zeros_grid)
-
-        scalar_zero = torch.tensor(0.0, dtype=torch.float32)
-        scalar_one = torch.tensor(1.0, dtype=torch.float32)
-        self.register_buffer('scalar_zero', scalar_zero)
-        self.register_buffer('scalar_one', scalar_one)
-    
-    def _normalize_z_for_nerf(self, z_phys) : 
-
-        """
-        This method is used for hash encoding based methods
-        Return the value of z normalized with the maximum
-        value in x, y and z with padding.
-
-        z_phys : value of int z plane
-        """
-        z_norm = (z_phys - self.z_min) / self.max_span
-        z_centered = z_norm + self.offset_z
-        z_final = z_centered * self.scale + self.padding
-        return torch.clamp(z_final, 0.0, 1.0 - 1e-5)
-
     def forward_BC_hash(self) : 
             """
             NOTE: This method is not maintained.
@@ -780,9 +773,6 @@ class HoloSolver(nn.Module) :
             obj_npy = obj_slice.cpu().numpy()
 
             obj_volume[:, :, i] = obj_npy
-
-            #img = Image.fromarray(obj_npy)
-            #img.save(os.path.join(obj_dir, f"obj_{z.item():.1f}.tif"))
         
         np.save(os.path.join(obj_dir, "volume_3d.npy"), obj_volume)
 
@@ -975,26 +965,11 @@ class HoloSolver(nn.Module) :
         
         return torch.square(torch.abs(U_0_following_prop))
     
-    def get_internal_values(self):
-        """
-        Get phase_shift and incident_light values
-        """
-        return self.phase_shift.item(), self.incident_light.item()
     
-    def update_barf_progress(self, current_epoch, barf_max_epochs):
-        """
-        Update the alpha parameter of Barf positional encoding.
+    # ==========================================================
+    # PART 3 : Pre-training of HoloSolver (Working)
+    # ==========================================================
 
-        current_epoch : epoch currently ongoing.
-        barf_max_epochs: max epochs with using barf.
-        """
-        progress = min(1.0, current_epoch/barf_max_epochs)
-        for module in self.modules():
-            if hasattr(module, "alpha_progress"):
-                module.alpha_progress.fill_(progress)
-                return progress 
-        return 1.0
-    
     def _init_pretraining(self, pre_training_params) :
         """
         Initialise useful parameters for pre-training
@@ -1059,19 +1034,24 @@ class HoloSolver(nn.Module) :
 
         global_gaussian = global_gaussian.unsqueeze(-1)
         
-        #weights = 1.0 + 100.0 * global_gaussian
-        #loss += torch.mean(weights * torch.square(densities_1d - global_gaussian))
         loss += torch.mean(torch.square(densities_1d - global_gaussian))
 
         return loss
-        
-
+            
+    # ==========================================================
+    # PART 4 : Forward of HoloSolver and More (Working)
+    # ==========================================================
+    def get_internal_values(self):
+        """
+        Get phase_shift and incident_light values
+        """
+        return self.phase_shift.item(), self.incident_light.item()
+    
     def forward(self, U_z0, e):
             """
             Execute the training model based on provided parameters. 
 
             U_z0 : Target hologram to reconstruct.
-
             e : Number of the current epoch.
             """
             loss_bc = torch.tensor(0.0, dtype=torch.float32, device=self.device)

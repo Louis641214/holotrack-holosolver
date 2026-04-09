@@ -13,8 +13,6 @@ import torch
 #import torchinfo.torchinfo as torchinfo
 import tqdm
 from torch.utils.tensorboard import SummaryWriter
-import numpy as np
-import random
 import shutil
 
 # Local imports
@@ -23,7 +21,7 @@ from . import models
 from . import optim
 from . import utils
 
-# Fixer la graine pour que chaque run soit identique
+# Fixer la graine pour que chaque run soit identique (Utile pour Debug)
 """
 seed = 302  # Tu peux tester 42, 0, ou 1234
 torch.manual_seed(seed)
@@ -56,9 +54,6 @@ def train(config):
     U_z0 = data.get_hologram(data_config)
     U_z0 = U_z0.to(device)
 
-    #------------Target Blurring----------- 
-    if data_config["blurring"]["activ"] is True : 
-        target_blurring = data.TargetBlurring(data_config["blurring"])
 
     #------------Build the model-----------
     torch.set_float32_matmul_precision('high')
@@ -80,38 +75,12 @@ def train(config):
         else : 
             physics_params.append(param)
     
-    if optim_config["scheduler"]["warm_start"] is True:
-        param_groups = [
-        {"params": nerf_params}, 
-        {"params": physics_params, "lr": 0.0}
-        ]
-    else :
-        param_groups = [
+    
+    param_groups = [
         {"params": nerf_params}, 
         {"params": physics_params, "lr": optim_config["lr_physics"]}
         ]
     optimizer = optim.get_optimizer(optim_config, param_groups)
-    
-    #-----------Scheduler-------------
-    if optim_config["scheduler"]["activ"] is True : 
-        """
-        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-            optimizer, 
-            mode="min", 
-            factor=optim_config["scheduler"]["factor"],
-            patience=optim_config["scheduler"]["patience"],
-            threshold=optim_config["scheduler"]["threshold"],
-            threshold_mode=optim_config["scheduler"]["threshold_mode"]
-        )
-        """
-        scheduler = torch.optim.lr_scheduler.MultiStepLR(
-            optimizer, 
-            milestones=["scheduler"]["milestones"],
-            gamma=optim_config["scheduler"]["gamma"])
-
-    #-----------Stop criteria-------------
-    if optim_config["stop_criteria"]["activ"] is True : 
-        stop_criteria = optim.VolumeDelta(optim_config["stop_criteria"])
 
     # --------Build the callbacks-------
     logging_config = config["logging"]
@@ -169,25 +138,9 @@ def train(config):
 
     #-------------Train LOOP--------------
     for e in progress_bar:
-        
-        #-----------Blurring regularization---------------
-        if data_config["blurring"]["activ"] is True :
-            if e < target_blurring.blur_epochs :
-                if e%500==0 :
-                    U_z0, sigma = target_blurring.update(clean_target, e)
-                    tensorboard_writer.add_scalar("Params/sigma", sigma, e)
-            else :
-                U_z0 = clean_target
-                tensorboard_writer.add_scalar("Params/sigma", 0.0, e)
-                data_config["blurring"]["activ"] = False
-        
-        #-----------BARF regularization----------------
-        if model_config["nerf_params"]["barf"] is True :
-            current_alpha = model.update_barf_progress(e, model_config["nerf_params"]["barf_epochs"])
-            tensorboard_writer.add_scalar("Params/BARF_Progress", current_alpha, e)
 
-        #------------TRAIN call--------------  
-
+         
+        #-----Reset optimiser after pre-training------
         if model_config["pre_training"]["activ"] is True and e == model_config["pre_training"]["epochs"] + 1:
             logging.info("= 🔄 Reset Adam and adjusting Lrs!")
             
@@ -199,7 +152,7 @@ def train(config):
             optimizer.param_groups[0]["lr"] = new_lr_nerf       
             optimizer.param_groups[1]["lr"] = new_lr_physics    
 
-
+        #------------TRAIN call-------------- 
         loss_physics, loss_bc, weighted_loss_sparsity, weighted_loss_tv, total_loss, loss_pre_training, volume_3d, total_norm = utils.train(model, U_z0, optimizer, e, use_dtype, scaler)
 
         #-----------Parameters-Norm------------
@@ -210,17 +163,6 @@ def train(config):
         total_param_norm = total_param_norm ** 0.5
         tensorboard_writer.add_scalar("Params/Weights_Norm", total_param_norm, e)
 
-        #------------Scheduler call-----------
-        if optim_config["scheduler"]["activ"] is True : 
-            loss_buffer+=total_loss
-            if e>2600 and e%200==0:
-                avg_loss_200 = loss_buffer/200
-                logging.info(f"avg loss : {avg_loss_200}")
-                scheduler.step(avg_loss_200)
-                loss_buffer = 0.0
-                #optimizer.param_groups[1]["lr"] = optim_config["lr_physics"]
-                tensorboard_writer.add_scalar("Params/Lr_Nerf", optimizer.param_groups[0]["lr"], e)
-                tensorboard_writer.add_scalar("Params/Lr_Physics", optimizer.param_groups[1]["lr"], e)
         
         #------------TQDM loss info------------
         if e <= model_config["pre_training"]["epochs"] and model_config["pre_training"]["activ"] is True :
@@ -249,26 +191,8 @@ def train(config):
             norm_holo = ((raw_holo - raw_holo.min()) / (raw_holo.max() - raw_holo.min() +1e-8))
             tensorboard_writer.add_image("Visu/Rec_Holo", norm_holo.unsqueeze(0), e)
             
-            #----------Reconstruct hologram with blurring regulariuzation----------
-            if data_config["blurring"]["activ"] :
-                tensorboard_writer.add_image("Visu/Actual_Holo", U_z0.detach().cpu().unsqueeze(0), e)
-        
-        #----------Stop Criteria update----------
-        if optim_config["stop_criteria"]["activ"] is True : 
-            if e % stop_criteria.check_interval == 0 :
-                done, relative_change = stop_criteria.update(volume_3d)
-                tensorboard_writer.add_scalar("Params/Stop_criteria", relative_change, e)
-                logging.info(f"Volume fixed for {stop_criteria.current_patience*stop_criteria.check_interval}")
-                logging.info(f"Patience : {stop_criteria.current_patience}")
-                if done :
-                    logging.info(f"STOP TRAINING FORCED")
-                    model_checkpoint.update(total_loss)
-                    logging.info("=Generation of volume")
-                    test_config = config["test"]
-                    utils.test(model, test_config)
-                    break
 
-        #----------Save Model weights----------
+        #----------Save Model weights and Generate Results----------
         if model_config["pre_training"]["activ"] is True :
             if (e>model_config["pre_training"]["epochs"] and e%200==0) or (e==model_config["pre_training"]["epochs"]):
                 model_checkpoint.update(total_loss)
@@ -282,7 +206,6 @@ def train(config):
             utils.test(model, save_dir, e)
 
         
-
     #---------End training resume----------
     phase_shift, incident_light = model.get_internal_values()
     logging.info("-" * 30)
