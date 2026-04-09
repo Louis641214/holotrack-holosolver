@@ -13,9 +13,9 @@ L’objectif du projet est la **reconstruction et la localisation 3D de bactéri
 
 Le projet repose sur une structure modulaire :
 
-- **Holosolver** : modèle 
+- **holotrack_model** : modèle holosolver
 - **Simulator** : générateur d’hologrammes synthétiques
-- **Visualizer** : outil de visualisation des résultats
+- **visualizer** : outil de visualisation des résultats
 
 ### 🔧 Technologies utilisées
 
