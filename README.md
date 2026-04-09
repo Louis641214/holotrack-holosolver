@@ -8,7 +8,6 @@
 
 L’objectif du projet est la **reconstruction et la localisation 3D de bactéries à partir d’hologrammes**.
 
----
 
 ### Architecture du projet
 
@@ -41,6 +40,8 @@ source .venv/bin/activate
 # Installer les dépendances
 uv pip install -e .
 ```
+
+---
 
 
 ## 2. Simulateur
