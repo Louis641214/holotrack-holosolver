@@ -36,8 +36,8 @@ Exécutez les commandes suivantes :
 
 ```bash
 # Cloner et entrer dans le dossier
-git clone https://gitlab-research.centralesupelec.fr/cei-2025-2026/2025-2026-holotrack.git
-cd 2025-2026-holotrack
+git clone https://github.com/Louis641214/holotrack-holosolver.git
+cd holotrack-holosolver
 
 # Créer et activer votre environnement virtuel
 uv venv
